@@ -47,7 +47,7 @@ export default function SynagogueBoard() {
       const { data: synData } = await supabase
         .from('synagogues')
         .select('zmanim_settings')
-        .eq('id', 1)
+        .eq('id', 'c35cdd4c-7f74-4254-b012-16f4677fefa7')
         .single()
       
       if (synData) setSettings(synData.zmanim_settings)

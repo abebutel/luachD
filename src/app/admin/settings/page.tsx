@@ -7,14 +7,27 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+// Default fallback in case the database is empty
+const defaultSettings = {
+  sunrise: true,
+  sofZmanShma: true,
+  minchaGedola: true,
+  sunset: true,
+  tzeit: true
+}
+
 export default function ZmanimSettings() {
-  const [settings, setSettings] = useState<any>(null)
+  const [settings, setSettings] = useState<any>(defaultSettings)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchSettings() {
-      const { data } = await supabase.from('synagogues').select('zmanim_settings').eq('id', 1).single()
-      if (data) setSettings(data.zmanim_settings)
+      const { data } = await supabase.from('synagogues').select('zmanim_settings').eq('id', 'c35cdd4c-7f74-4254-b012-16f4677fefa7').single()
+      
+      // Only overwrite the defaults if we actually got data from Supabase
+      if (data && data.zmanim_settings) {
+        setSettings(data.zmanim_settings)
+      }
       setLoading(false)
     }
     fetchSettings()
@@ -23,10 +36,12 @@ export default function ZmanimSettings() {
   const toggleSetting = async (key: string) => {
     const newSettings = { ...settings, [key]: !settings[key] }
     setSettings(newSettings)
-    await supabase.from('synagogues').update({ zmanim_settings: newSettings }).eq('id', 1)
+    
+    // Save to database instantly
+    await supabase.from('synagogues').update({ zmanim_settings: newSettings }).eq('id', 'c35cdd4c-7f74-4254-b012-16f4677fefa7')
   }
 
-  if (loading) return <p>טוען הגדרות...</p>
+  if (loading) return <p style={{ textAlign: 'center', marginTop: '50px' }}>טוען הגדרות...</p>
 
   return (
     <div dir="rtl" style={{ padding: '50px', maxWidth: '500px', margin: 'auto', fontFamily: 'Heebo, sans-serif' }}>
