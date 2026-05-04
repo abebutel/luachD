@@ -65,7 +65,7 @@ export default function SynagogueBoard() {
   useEffect(() => {
     async function fetchData() {
       // NEW: Also select 'announcements' from the database
-      const { data: synData } = await supabase.from('synagogues').select('zmanim_settings, prayer_times, announcements').eq('id', SYNAGOGUE_ID).single()
+      const { data: synData } = await supabase.from('synagogues').select('zmanim_settings, prayer_times, announcements, shabbat_note').eq('id', SYNAGOGUE_ID).single()
       
       if (synData?.zmanim_settings) setSettings({ ...defaultSettings, ...synData.zmanim_settings })
       if (synData?.prayer_times) setPrayers(synData.prayer_times)
