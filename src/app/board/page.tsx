@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { getUpcomingHebrewEvents } from '../../lib/eventlogic'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,7 +41,7 @@ export default function SynagogueBoard() {
     fetchZmanim()
   }, [])
 
-  // 3. Fetch Approved Members 
+  // 3. Fetch Approved Members & Calculate Upcoming Events
   useEffect(() => {
     async function fetchEvents() {
       const { data } = await supabase
@@ -49,8 +50,9 @@ export default function SynagogueBoard() {
         .eq('is_approved', true)
 
       if (data) {
-        const eventMessages = data.map(member => `ברוך הבא לקהילה: ${member.full_name}`)
-        setEvents(eventMessages)
+        // Run our new Hebrew calendar math on the database members
+        const calculatedEvents = getUpcomingHebrewEvents(data)
+        setEvents(calculatedEvents)
       }
     }
     fetchEvents()
@@ -95,12 +97,17 @@ export default function SynagogueBoard() {
           <div style={{ fontSize: '1.8rem', marginTop: '20px', color: '#e6f1ff' }}>
             {events.length > 0 ? (
               <ul style={{ listStyle: 'none', padding: 0, lineHeight: '1.8' }}>
-                {events.map((evt, idx) => (
-                  <li key={idx}>🎉 {evt}</li>
+                {events.map((evt: any, idx) => (
+                  <li key={idx} style={{ marginBottom: '15px', borderBottom: '1px dashed #233554', paddingBottom: '10px' }}>
+                    <div style={{ color: '#64ffda', fontWeight: 'bold' }}>{evt.type} ל{evt.name} 🎉</div>
+                    <div style={{ fontSize: '1.4rem', color: '#8892b0' }}>
+                      {evt.hebrewDateStr} ({evt.timeText})
+                    </div>
+                  </li>
                 ))}
               </ul>
             ) : (
-              <p>אין אירועים קרובים כרגע...</p>
+              <p>אין אירועים בשבועיים הקרובים.</p>
             )}
           </div>
         </section>

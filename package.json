@@ -17,5 +17,12 @@
     "typescript": "latest",
     "@types/react": "latest",
     "@types/node": "latest"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "@supabase/supabase-js": "latest",
+    "@hebcal/core": "latest"
   }
 }
