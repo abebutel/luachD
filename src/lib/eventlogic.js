@@ -1,6 +1,6 @@
 import { HDate } from '@hebcal/core'
 
-export function getUpcomingHebrewEvents(members) {
+export function getUpcomingHebrewEvents(members, azkarot = []) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   
@@ -10,44 +10,51 @@ export function getUpcomingHebrewEvents(members) {
   const currentHYear = new HDate(today).getFullYear()
   let upcoming = []
 
-  members.forEach(member => {
-    if (member.birthday) {
-      // 1. Get the original Hebrew birth date
-      const origHDate = new HDate(new Date(member.birthday))
-      
-      try {
-        // 2. Find when that exact Hebrew date occurs THIS year
-        let targetHDate = new HDate(origHDate.getDate(), origHDate.getMonth(), currentHYear)
-        let targetGreg = targetHDate.greg()
-        targetGreg.setHours(0, 0, 0, 0)
+  // Helper function: Processes any date and drops it into our timeline
+  const processEvent = (gregorianDateStr, name, typeLabel, icon) => {
+    if (!gregorianDateStr) return
 
-        // 3. If it already passed this year, check if it's coming up at the very start of NEXT Hebrew year
-        if (targetGreg < today) {
-            targetHDate = new HDate(origHDate.getDate(), origHDate.getMonth(), currentHYear + 1)
-            targetGreg = targetHDate.greg()
-            targetGreg.setHours(0, 0, 0, 0)
-        }
+    const origHDate = new HDate(new Date(gregorianDateStr))
+    
+    try {
+      let targetHDate = new HDate(origHDate.getDate(), origHDate.getMonth(), currentHYear)
+      let targetGreg = targetHDate.greg()
+      targetGreg.setHours(0, 0, 0, 0)
 
-        // 4. Check if the event falls in our 14-day window
-        if (targetGreg >= today && targetGreg <= in14Days) {
-            const daysAway = Math.floor((targetGreg - today) / (1000 * 60 * 60 * 24))
-            let timeText = daysAway === 0 ? 'היום!' : daysAway === 1 ? 'מחר' : `בעוד ${daysAway} ימים`
+      if (targetGreg < today) {
+          targetHDate = new HDate(origHDate.getDate(), origHDate.getMonth(), currentHYear + 1)
+          targetGreg = targetHDate.greg()
+          targetGreg.setHours(0, 0, 0, 0)
+      }
 
-            upcoming.push({
-            name: member.full_name,
-            type: 'מזל טוב! יום הולדת',
-            hebrewDateStr: targetHDate.renderGematriya(true), // e.g., כ״ה באייר
+      if (targetGreg >= today && targetGreg <= in14Days) {
+          const daysAway = Math.floor((targetGreg - today) / (1000 * 60 * 60 * 24))
+          let timeText = daysAway === 0 ? 'היום!' : daysAway === 1 ? 'מחר' : `בעוד ${daysAway} ימים`
+
+          upcoming.push({
+            name: name,
+            type: typeLabel,
+            icon: icon,
+            hebrewDateStr: targetHDate.renderGematriya(true),
             daysAway: daysAway,
             timeText: timeText
-            })
-        }
-      } catch(e) {
-        // Safely skip impossible calendar dates (like Adar 30 in a non-leap year)
-        console.warn(`Skipping invalid Hebrew date for ${member.full_name}`)
+          })
       }
+    } catch(e) {
+      console.warn(`Skipping invalid Hebrew date for ${name}`)
     }
+  }
+
+  // 1. Process Birthdays
+  members.forEach(member => {
+    processEvent(member.birthday, member.full_name, 'מזל טוב! יום הולדת', '🎉')
   })
 
-  // Sort them so the most immediate events are at the top
+  // 2. Process Azkarot
+  azkarot.forEach(azkara => {
+    processEvent(azkara.date_gregorian, azkara.deceased_name, 'אזכרה לעילוי נשמת', '🕯️')
+  })
+
+  // Sort by closest date
   return upcoming.sort((a, b) => a.daysAway - b.daysAway)
 }

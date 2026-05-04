@@ -41,17 +41,24 @@ export default function SynagogueBoard() {
     fetchZmanim()
   }, [])
 
-  // 3. Fetch Approved Members & Calculate Upcoming Events
+  // 3. Fetch Approved Members, Azkarot & Calculate Upcoming Events
   useEffect(() => {
     async function fetchEvents() {
-      const { data } = await supabase
+      // Get the members
+      const { data: membersData } = await supabase
         .from('members')
         .select('*')
         .eq('is_approved', true)
 
-      if (data) {
-        // Run our new Hebrew calendar math on the database members
-        const calculatedEvents = getUpcomingHebrewEvents(data)
+      // Get the active azkarot
+      const { data: azkarotData } = await supabase
+        .from('azkarot')
+        .select('*')
+        .eq('is_active', true)
+
+      if (membersData) {
+        // Pass both tables into our logic engine
+        const calculatedEvents = getUpcomingHebrewEvents(membersData, azkarotData || [])
         setEvents(calculatedEvents)
       }
     }
@@ -97,9 +104,11 @@ export default function SynagogueBoard() {
           <div style={{ fontSize: '1.8rem', marginTop: '20px', color: '#e6f1ff' }}>
             {events.length > 0 ? (
               <ul style={{ listStyle: 'none', padding: 0, lineHeight: '1.8' }}>
-                {events.map((evt: any, idx) => (
+               {events.map((evt: any, idx) => (
                   <li key={idx} style={{ marginBottom: '15px', borderBottom: '1px dashed #233554', paddingBottom: '10px' }}>
-                    <div style={{ color: '#64ffda', fontWeight: 'bold' }}>{evt.type} ל{evt.name} 🎉</div>
+                    <div style={{ color: '#64ffda', fontWeight: 'bold' }}>
+                      {evt.icon} {evt.type}: {evt.name}
+                    </div>
                     <div style={{ fontSize: '1.4rem', color: '#8892b0' }}>
                       {evt.hebrewDateStr} ({evt.timeText})
                     </div>
