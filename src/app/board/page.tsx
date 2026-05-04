@@ -7,9 +7,17 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+// Helper function to format the long API date strings into "HH:MM"
+const formatTime = (dateString: string) => {
+  if (!dateString) return '--:--'
+  const date = new Date(dateString)
+  return date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
 export default function SynagogueBoard() {
   const [time, setTime] = useState(new Date())
   const [events, setEvents] = useState<string[]>([])
+  const [zmanim, setZmanim] = useState<any>({})
 
   // 1. Live Clock Timer
   useEffect(() => {
@@ -17,17 +25,30 @@ export default function SynagogueBoard() {
     return () => clearInterval(timer)
   }, [])
 
-  // 2. Fetch Approved Members for "Mazal Tov" or "Upcoming"
+  // 2. Fetch Live Zmanim for Modi'in
+  useEffect(() => {
+    async function fetchZmanim() {
+      try {
+        // Hebcal API using Modi'in coordinates
+        const res = await fetch('https://www.hebcal.com/zmanim?cfg=json&latitude=31.8927&longitude=35.0110&tzid=Asia/Jerusalem')
+        const data = await res.json()
+        setZmanim(data.times)
+      } catch (error) {
+        console.error("Failed to fetch Zmanim", error)
+      }
+    }
+    fetchZmanim()
+  }, [])
+
+  // 3. Fetch Approved Members 
   useEffect(() => {
     async function fetchEvents() {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('members')
         .select('*')
         .eq('is_approved', true)
 
       if (data) {
-        // For the pilot, we will simply welcome all approved members.
-        // Later, we will filter this strictly by date.
         const eventMessages = data.map(member => `ברוך הבא לקהילה: ${member.full_name}`)
         setEvents(eventMessages)
       }
@@ -37,12 +58,8 @@ export default function SynagogueBoard() {
 
   return (
     <div dir="rtl" style={{ 
-      backgroundColor: '#0a192f', 
-      color: '#ffffff', 
-      minHeight: '100vh', 
-      fontFamily: 'Heebo, sans-serif',
-      display: 'flex',
-      flexDirection: 'column'
+      backgroundColor: '#0a192f', color: '#ffffff', minHeight: '100vh', 
+      fontFamily: 'Heebo, sans-serif', display: 'flex', flexDirection: 'column'
     }}>
       {/* Header Area */}
       <header style={{ display: 'flex', justifyContent: 'space-between', padding: '30px', backgroundColor: '#020c1b', borderBottom: '4px solid #b38728' }}>
@@ -50,7 +67,7 @@ export default function SynagogueBoard() {
           <h1 style={{ margin: 0, fontSize: '3rem', color: '#b38728' }}>קהילת מודיעין</h1>
           <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#8892b0' }}>לוח זמנים והודעות</h2>
         </div>
-        <div style={{ textAlign: 'left' }}>
+        <div>
           <h1 style={{ margin: 0, fontSize: '4rem', fontVariantNumeric: 'tabular-nums' }}>
             {time.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
           </h1>
@@ -60,13 +77,15 @@ export default function SynagogueBoard() {
       {/* Main Content Grid */}
       <main style={{ display: 'flex', flex: 1, padding: '30px', gap: '30px' }}>
         
-        {/* Right Side: Zmanim (Prayer Times) */}
+        {/* Right Side: Zmanim (Live Prayer Times) */}
         <section style={{ flex: 1, backgroundColor: '#112240', borderRadius: '15px', padding: '30px', border: '1px solid #233554' }}>
-          <h2 style={{ fontSize: '2.5rem', borderBottom: '2px solid #b38728', paddingBottom: '10px', color: '#ccd6f6' }}>זמני תפילות</h2>
+          <h2 style={{ fontSize: '2.5rem', borderBottom: '2px solid #b38728', paddingBottom: '10px', color: '#ccd6f6' }}>זמני היום</h2>
           <ul style={{ listStyle: 'none', padding: 0, fontSize: '2rem', lineHeight: '2' }}>
-            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>שחרית:</span> <span style={{ color: '#64ffda' }}>06:15</span></li>
-            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>מנחה:</span> <span style={{ color: '#64ffda' }}>13:30</span></li>
-            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>ערבית:</span> <span style={{ color: '#64ffda' }}>19:45</span></li>
+            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>נץ החמה:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.sunrise)}</span></li>
+            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>סוף זמן ק"ש (מג"א):</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.sofZmanShmaMGA)}</span></li>
+            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>מנחה גדולה:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.minchaGedola)}</span></li>
+            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>שקיעה:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.sunset)}</span></li>
+            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>צאת הכוכבים:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.tzeit7023deg)}</span></li>
           </ul>
         </section>
 
@@ -87,7 +106,6 @@ export default function SynagogueBoard() {
         </section>
       </main>
 
-      {/* Footer / Scrolling Ticker Placeholder */}
       <footer style={{ backgroundColor: '#020c1b', padding: '15px', textAlign: 'center', fontSize: '1.5rem', color: '#b38728', borderTop: '2px solid #233554' }}>
         לוחD - מערכת חכמה לניהול בתי כנסת
       </footer>
