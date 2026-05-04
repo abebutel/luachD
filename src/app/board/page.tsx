@@ -8,7 +8,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// Helper function to format the long API date strings into "HH:MM"
 const formatTime = (dateString: string) => {
   if (!dateString) return '--:--'
   const date = new Date(dateString)
@@ -17,8 +16,9 @@ const formatTime = (dateString: string) => {
 
 export default function SynagogueBoard() {
   const [time, setTime] = useState(new Date())
-  const [events, setEvents] = useState<string[]>([])
+  const [events, setEvents] = useState<any[]>([])
   const [zmanim, setZmanim] = useState<any>({})
+  const [settings, setSettings] = useState<any>(null) // NEW: State to hold Gabbai settings
 
   // 1. Live Clock Timer
   useEffect(() => {
@@ -30,7 +30,6 @@ export default function SynagogueBoard() {
   useEffect(() => {
     async function fetchZmanim() {
       try {
-        // Hebcal API using Modi'in coordinates
         const res = await fetch('https://www.hebcal.com/zmanim?cfg=json&latitude=31.8927&longitude=35.0110&tzid=Asia/Jerusalem')
         const data = await res.json()
         setZmanim(data.times)
@@ -41,9 +40,18 @@ export default function SynagogueBoard() {
     fetchZmanim()
   }, [])
 
-  // 3. Fetch Approved Members, Azkarot & Calculate Upcoming Events
+  // 3. Fetch Data from Supabase (Members, Azkarot, AND Settings)
   useEffect(() => {
-    async function fetchEvents() {
+    async function fetchData() {
+      // First, get the visual settings
+      const { data: synData } = await supabase
+        .from('synagogues')
+        .select('zmanim_settings')
+        .eq('id', 1)
+        .single()
+      
+      if (synData) setSettings(synData.zmanim_settings)
+
       // Get the members
       const { data: membersData } = await supabase
         .from('members')
@@ -57,12 +65,11 @@ export default function SynagogueBoard() {
         .eq('is_active', true)
 
       if (membersData) {
-        // Pass both tables into our logic engine
         const calculatedEvents = getUpcomingHebrewEvents(membersData, azkarotData || [])
         setEvents(calculatedEvents)
       }
     }
-    fetchEvents()
+    fetchData()
   }, [])
 
   return (
@@ -90,11 +97,38 @@ export default function SynagogueBoard() {
         <section style={{ flex: 1, backgroundColor: '#112240', borderRadius: '15px', padding: '30px', border: '1px solid #233554' }}>
           <h2 style={{ fontSize: '2.5rem', borderBottom: '2px solid #b38728', paddingBottom: '10px', color: '#ccd6f6' }}>זמני היום</h2>
           <ul style={{ listStyle: 'none', padding: 0, fontSize: '2rem', lineHeight: '2' }}>
-            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>נץ החמה:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.sunrise)}</span></li>
-            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>סוף זמן ק"ש (מג"א):</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.sofZmanShmaMGA)}</span></li>
-            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>מנחה גדולה:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.minchaGedola)}</span></li>
-            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>שקיעה:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.sunset)}</span></li>
-            <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>צאת הכוכבים:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.tzeit7023deg)}</span></li>
+            
+            {/* Conditional Rendering based on Settings */}
+            {settings?.sunrise && (
+              <li style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>נץ החמה:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.sunrise)}</span>
+              </li>
+            )}
+            
+            {settings?.sofZmanShma && (
+              <li style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>סוף זמן ק"ש (מג"א):</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.sofZmanShmaMGA)}</span>
+              </li>
+            )}
+            
+            {settings?.minchaGedola && (
+              <li style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>מנחה גדולה:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.minchaGedola)}</span>
+              </li>
+            )}
+            
+            {settings?.sunset && (
+              <li style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>שקיעה:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.sunset)}</span>
+              </li>
+            )}
+            
+            {settings?.tzeit && (
+              <li style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>צאת הכוכבים:</span> <span style={{ color: '#64ffda' }}>{formatTime(zmanim.tzeit7023deg)}</span>
+              </li>
+            )}
+
           </ul>
         </section>
 
@@ -104,7 +138,7 @@ export default function SynagogueBoard() {
           <div style={{ fontSize: '1.8rem', marginTop: '20px', color: '#e6f1ff' }}>
             {events.length > 0 ? (
               <ul style={{ listStyle: 'none', padding: 0, lineHeight: '1.8' }}>
-               {events.map((evt: any, idx) => (
+                {events.map((evt: any, idx) => (
                   <li key={idx} style={{ marginBottom: '15px', borderBottom: '1px dashed #233554', paddingBottom: '10px' }}>
                     <div style={{ color: '#64ffda', fontWeight: 'bold' }}>
                       {evt.icon} {evt.type}: {evt.name}
@@ -116,7 +150,7 @@ export default function SynagogueBoard() {
                 ))}
               </ul>
             ) : (
-              <p>אין אירועים בשבועיים הקרובים.</p>
+              <p>אין אירועים קרובים כרגע...</p>
             )}
           </div>
         </section>
