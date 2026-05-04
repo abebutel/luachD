@@ -28,6 +28,8 @@ export default function SynagogueBoard() {
   const [settings, setSettings] = useState<any>(defaultSettings)
   const [prayers, setPrayers] = useState<any>(defaultPrayers)
   const [announcements, setAnnouncements] = useState<string[]>([]) // NEW: Announcements state
+  const [shabbatData, setShabbatData] = useState<any>(null)
+  const [shabbatNote, setShabbatNote] = useState('')
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000)
@@ -45,6 +47,21 @@ export default function SynagogueBoard() {
     fetchHebcal()
   }, [])
 
+// Fetch Shabbat Data
+  useEffect(() => {
+    async function fetchShabbat() {
+      try {
+        const res = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=294200&m=50')
+        const data = await res.json()
+        const parasha = data.items.find((i: any) => i.category === 'parashat')?.hebrew || ''
+        const candles = data.items.find((i: any) => i.category === 'candles')?.date
+        const havdalah = data.items.find((i: any) => i.category === 'havdalah')?.date
+        setShabbatData({ parasha, candles, havdalah })
+      } catch (e) { console.error(e) }
+    }
+    fetchShabbat()
+  }, [])
+
   useEffect(() => {
     async function fetchData() {
       // NEW: Also select 'announcements' from the database
@@ -52,6 +69,7 @@ export default function SynagogueBoard() {
       
       if (synData?.zmanim_settings) setSettings({ ...defaultSettings, ...synData.zmanim_settings })
       if (synData?.prayer_times) setPrayers(synData.prayer_times)
+      if (synData?.shabbat_note) setShabbatNote(synData.shabbat_note)
       if (synData?.announcements) setAnnouncements(synData.announcements) // NEW: Set announcements
 
       const { data: membersData } = await supabase.from('members').select('*').eq('is_approved', true)
@@ -103,6 +121,23 @@ export default function SynagogueBoard() {
 
         {/* COLUMN 2: PRAYER TIMES (GABBAI SETTINGS) */}
         <section style={{ flex: 1, backgroundColor: '#112240', borderRadius: '15px', padding: '25px', border: '1px solid #233554' }}>
+          {/* Shabbat Module Box */}
+        {shabbatData && (
+          <div style={{ backgroundColor: '#020c1b', padding: '20px', borderRadius: '10px', border: '1px solid #b38728', marginBottom: '25px', textAlign: 'center' }}>
+            <h2 style={{ margin: '0 0 10px 0', fontSize: '2rem', color: '#b38728' }}>
+              שבת {shabbatData.parasha}
+            </h2>
+            {shabbatNote && (
+              <div style={{ fontSize: '1.6rem', color: '#64ffda', marginBottom: '10px', fontWeight: 'bold' }}>
+                {shabbatNote}
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '1.4rem', color: '#ccd6f6' }}>
+              <span>🕯️ הדלקת נרות: <strong>{formatTime(shabbatData.candles)}</strong></span>
+              <span>🍷 צאת שבת: <strong>{formatTime(shabbatData.havdalah)}</strong></span>
+            </div>
+          </div>
+        )}
           <h2 style={{ fontSize: '2rem', borderBottom: '2px solid #b38728', paddingBottom: '10px', color: '#ccd6f6' }}>זמני תפילות</h2>
           <ul style={{ listStyle: 'none', padding: 0, fontSize: '1.8rem', lineHeight: '2.5' }}>
             {prayers?.shacharit && <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>שחרית:</span> <span style={{ color: '#b38728', fontWeight: 'bold' }}>{prayers.shacharit}</span></li>}
