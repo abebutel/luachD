@@ -7,164 +7,91 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-export default function MemberDirectory() {
-  const [members, setMembers] = useState<any[]>([])
+export default function AdminMembersDirectory() {
+  const [households, setHouseholds] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  
-  // State for inline editing
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<any>({})
-
-  // State for adding a new member
-  const [isAdding, setIsAdding] = useState(false)
-  const [newMember, setNewMember] = useState<any>({ full_name: '', phone: '', email: '', address: '', birthday: '' })
 
   useEffect(() => {
-    fetchMembers()
+    async function fetchDirectory() {
+      const [memRes, profRes, azkRes] = await Promise.all([
+        supabase.from('members').select('*').order('full_name', { ascending: true }),
+        supabase.from('user_profiles').select('*'),
+        supabase.from('azkarot').select('*')
+      ])
+
+      const grouped: Record<string, any> = {}
+
+      // Group parents and children by user_id
+      memRes.data?.forEach(m => {
+        const uid = m.user_id || m.id // Fallback for old manual entries
+        if (!grouped[uid]) grouped[uid] = { parent: null, children: [], profile: null, azkarot: [] }
+        if (!m.is_child) grouped[uid].parent = m
+        else grouped[uid].children.push(m)
+      })
+
+      // Attach Profiles (Anniversaries)
+      profRes.data?.forEach(p => {
+        if (grouped[p.user_id]) grouped[p.user_id].profile = p
+      })
+
+      // Attach Azkarot
+      azkRes.data?.forEach(a => {
+        if (grouped[a.user_id]) grouped[a.user_id].azkarot.push(a)
+      })
+
+      // Convert to array and filter out empty ghosts
+      const finalArray = Object.values(grouped).filter(g => g.parent != null)
+      setHouseholds(finalArray)
+      setLoading(false)
+    }
+    fetchDirectory()
   }, [])
 
-  async function fetchMembers() {
-    setLoading(true)
-    const { data } = await supabase
-      .from('members')
-      .select('*')
-      .eq('is_approved', true)
-      .order('full_name', { ascending: true })
-    
-    if (data) setMembers(data)
-    setLoading(false)
-  }
-
-  // --- EDITING LOGIC ---
-  const startEditing = (member: any) => {
-    setEditingId(member.id)
-    setEditForm(member)
-    setIsAdding(false) // Close add mode if open
-  }
-
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditForm({ ...editForm, [e.target.name]: e.target.value })
-  }
-
-  const saveChanges = async () => {
-    const { error } = await supabase.from('members').update(editForm).eq('id', editingId)
-    if (!error) {
-      setMembers(members.map(m => m.id === editingId ? editForm : m))
-      setEditingId(null)
-    } else {
-      alert("שגיאה בשמירת הנתונים")
-    }
-  }
-
-  // --- ADDING LOGIC ---
-  const handleNewChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewMember({ ...newMember, [e.target.name]: e.target.value })
-  }
-
-  const saveNewMember = async () => {
-    if (!newMember.full_name) {
-      alert("חובה להזין לפחות שם מלא")
-      return
-    }
-    
-    // Force auto-approval since the Gabbai is adding them directly
-    const memberToInsert = { ...newMember, is_approved: true }
-    
-    const { data, error } = await supabase.from('members').insert([memberToInsert]).select()
-    
-    if (!error && data) {
-      // Add to list and sort alphabetically
-      const updatedList = [...members, data[0]].sort((a, b) => a.full_name.localeCompare(b.full_name))
-      setMembers(updatedList)
-      setIsAdding(false)
-      setNewMember({ full_name: '', phone: '', email: '', address: '', birthday: '' })
-    } else {
-      alert("שגיאה בהוספת החבר")
-    }
-  }
-
-  if (loading) return <p>טוען נתוני חברים...</p>
+  if (loading) return <p style={{ textAlign: 'center', marginTop: '50px' }}>טוען ספר קהילה...</p>
 
   return (
-    <div dir="rtl">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f0f0f0', paddingBottom: '15px', marginBottom: '20px' }}>
-        <h1 style={{ color: '#002366', margin: 0 }}>ספר קהילה</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{ fontSize: '1.2rem', color: '#8892b0' }}>
-            סה"כ רשומים: <strong style={{ color: '#b38728' }}>{members.length}</strong>
-          </div>
-          <button 
-            onClick={() => { setIsAdding(true); setEditingId(null); }} 
-            style={{ background: '#b38728', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            ➕ הוסף חבר חדש
-          </button>
-        </div>
-      </div>
-
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '1.1rem' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #ddd', color: '#002366' }}>
-              <th style={{ padding: '12px' }}>שם מלא</th>
-              <th style={{ padding: '12px' }}>טלפון</th>
-              <th style={{ padding: '12px' }}>אימייל</th>
-              <th style={{ padding: '12px' }}>כתובת</th>
-              <th style={{ padding: '12px' }}>תאריך לידה (לועזי)</th>
-              <th style={{ padding: '12px' }}>פעולות</th>
-            </tr>
-          </thead>
-          <tbody>
+    <div dir="rtl" style={{ padding: '40px', maxWidth: '900px', margin: 'auto', fontFamily: 'Heebo, sans-serif' }}>
+      <h1 style={{ color: '#002366', marginBottom: '20px' }}>ספר הקהילה (Directory)</h1>
+      <p style={{ color: '#555', marginBottom: '30px' }}>תצוגה מרוכזת של כל משפחות הקהילה, כולל ימי הולדת, ימי נישואין ואזכרות.</p>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+        {households.map((h, i) => (
+          <div key={i} style={{ background: '#f8f9fa', borderRadius: '10px', border: '1px solid #ddd', padding: '20px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
             
-            {/* NEW MEMBER ROW (Only shows when isAdding is true) */}
-            {isAdding && (
-              <tr style={{ backgroundColor: '#e6f2ff', borderBottom: '2px solid #b38728' }}>
-                <td style={{ padding: '10px' }}><input name="full_name" placeholder="שם מלא" value={newMember.full_name} onChange={handleNewChange} style={inputStyle} /></td>
-                <td style={{ padding: '10px' }}><input name="phone" placeholder="טלפון" value={newMember.phone} onChange={handleNewChange} style={inputStyle} /></td>
-                <td style={{ padding: '10px' }}><input name="email" placeholder="אימייל" value={newMember.email} onChange={handleNewChange} style={inputStyle} /></td>
-                <td style={{ padding: '10px' }}><input name="address" placeholder="כתובת" value={newMember.address} onChange={handleNewChange} style={inputStyle} /></td>
-                <td style={{ padding: '10px' }}><input name="birthday" type="date" value={newMember.birthday} onChange={handleNewChange} style={inputStyle} /></td>
-                <td style={{ padding: '10px', display: 'flex', gap: '10px' }}>
-                  <button onClick={saveNewMember} style={{ background: '#28a745', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' }}>הוסף</button>
-                  <button onClick={() => setIsAdding(false)} style={{ background: '#dc3545', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' }}>ביטול</button>
-                </td>
-              </tr>
+            {/* Contact Info */}
+            <h2 style={{ margin: '0 0 15px 0', color: '#002366', borderBottom: '2px solid #b38728', paddingBottom: '5px' }}>
+              משפחת {h.parent.full_name}
+            </h2>
+            <div style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '15px' }}>
+              <div>📍 <strong>כתובת:</strong> {h.parent.address || '-'}</div>
+              <div>📞 <strong>טלפון:</strong> {h.parent.phone || '-'}</div>
+              {h.parent.birthday && <div>🎉 <strong>יום הולדת:</strong> {h.parent.birthday}</div>}
+              {h.profile?.anniversary_date && <div>💍 <strong>יום נישואין:</strong> {h.profile.anniversary_date} {h.profile.spouse_name && `(${h.profile.spouse_name})`}</div>}
+            </div>
+
+            {/* Children */}
+            {h.children.length > 0 && (
+              <div style={{ marginBottom: '15px', padding: '10px', background: '#e9ecef', borderRadius: '5px' }}>
+                <strong style={{ color: '#333' }}>ילדים:</strong>
+                <ul style={{ margin: '5px 0 0 0', paddingRight: '20px', fontSize: '1rem' }}>
+                  {h.children.map((c: any) => <li key={c.id}>{c.full_name} {c.birthday && `(${c.birthday})`}</li>)}
+                </ul>
+              </div>
             )}
 
-            {/* EXISTING MEMBERS ROWS */}
-            {members.map(member => (
-              <tr key={member.id} style={{ borderBottom: '1px solid #eee' }}>
-                {editingId === member.id ? (
-                  <>
-                    <td style={{ padding: '10px' }}><input name="full_name" value={editForm.full_name || ''} onChange={handleEditChange} style={inputStyle} /></td>
-                    <td style={{ padding: '10px' }}><input name="phone" value={editForm.phone || ''} onChange={handleEditChange} style={inputStyle} /></td>
-                    <td style={{ padding: '10px' }}><input name="email" value={editForm.email || ''} onChange={handleEditChange} style={inputStyle} /></td>
-                    <td style={{ padding: '10px' }}><input name="address" value={editForm.address || ''} onChange={handleEditChange} style={inputStyle} /></td>
-                    <td style={{ padding: '10px' }}><input name="birthday" type="date" value={editForm.birthday || ''} onChange={handleEditChange} style={inputStyle} /></td>
-                    <td style={{ padding: '10px', display: 'flex', gap: '10px' }}>
-                      <button onClick={saveChanges} style={{ background: '#28a745', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' }}>שמור</button>
-                      <button onClick={() => setEditingId(null)} style={{ background: '#dc3545', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' }}>ביטול</button>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td style={{ padding: '12px', fontWeight: 'bold' }}>{member.full_name}</td>
-                    <td style={{ padding: '12px' }}>{member.phone}</td>
-                    <td style={{ padding: '12px' }}>{member.email}</td>
-                    <td style={{ padding: '12px' }}>{member.address}</td>
-                    <td style={{ padding: '12px' }}>{member.birthday}</td>
-                    <td style={{ padding: '12px' }}>
-                      <button onClick={() => startEditing(member)} style={{ background: '#002366', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' }}>ערוך</button>
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            {/* Azkarot */}
+            {h.azkarot.length > 0 && (
+              <div style={{ padding: '10px', background: '#fef5f5', borderLeft: '4px solid #dc3545', borderRadius: '5px' }}>
+                <strong style={{ color: '#dc3545' }}>אזכרות:</strong>
+                <ul style={{ margin: '5px 0 0 0', paddingRight: '20px', fontSize: '1rem' }}>
+                  {h.azkarot.map((a: any) => <li key={a.id}>{a.name} ({a.hebrew_date})</li>)}
+                </ul>
+              </div>
+            )}
+
+          </div>
+        ))}
       </div>
     </div>
   )
 }
-
-const inputStyle = { padding: '8px', width: '100%', boxSizing: 'border-box' as const, borderRadius: '4px', border: '1px solid #ccc', fontFamily: 'Heebo, sans-serif' }
