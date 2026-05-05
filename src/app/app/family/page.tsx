@@ -14,8 +14,8 @@ export default function FamilyPage() {
   const [loading, setLoading] = useState(true)
   const [authMsg, setAuthMsg] = useState('')
 
-  // Data States
-  const [profile, setProfile] = useState({ last_name: '', spouse_name: '', anniversary_date: '' })
+  // Data States (Updated to include first_name and birthday)
+  const [profile, setProfile] = useState({ first_name: '', last_name: '', spouse_name: '', anniversary_date: '', birthday: '' })
   const [members, setMembers] = useState<any[]>([])
   const [azkarot, setAzkarot] = useState<any[]>([])
 
@@ -68,7 +68,7 @@ export default function FamilyPage() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    setProfile({ last_name: '', spouse_name: '', anniversary_date: '' })
+    setProfile({ first_name: '', last_name: '', spouse_name: '', anniversary_date: '', birthday: '' })
     setMembers([])
     setAzkarot([])
   }
@@ -78,9 +78,11 @@ export default function FamilyPage() {
     setProfileMsg('שומר...')
     const upsertData = { 
       user_id: session.user.id, 
+      first_name: profile.first_name,
       last_name: profile.last_name, 
       spouse_name: profile.spouse_name, 
-      anniversary_date: profile.anniversary_date || null 
+      anniversary_date: profile.anniversary_date || null,
+      birthday: profile.birthday || null
     }
     await supabase.from('user_profiles').upsert(upsertData)
     setProfileMsg('נשמר בהצלחה!')
@@ -156,16 +158,25 @@ export default function FamilyPage() {
       {/* 1. PROFILE SECTION */}
       <section style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
         <h2 style={{ color: '#3A6EA5', marginTop: 0, borderBottom: '2px solid #F0F4F8', paddingBottom: '10px' }}>🏠 פרטי המשפחה (קבוע)</h2>
-        <input type="text" placeholder="שם משפחה (למשל: כהן)" value={profile.last_name} onChange={e => setProfile({...profile, last_name: e.target.value})} style={inputStyle} />
-        <input type="text" placeholder="שם בן/בת הזוג (אופציונלי)" value={profile.spouse_name} onChange={e => setProfile({...profile, spouse_name: e.target.value})} style={inputStyle} />
+        
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input type="text" placeholder="שם פרטי שלך" value={profile.first_name || ''} onChange={e => setProfile({...profile, first_name: e.target.value})} style={{...inputStyle, flex: 1}} />
+          <input type="text" placeholder="שם משפחה (למשל: כהן)" value={profile.last_name || ''} onChange={e => setProfile({...profile, last_name: e.target.value})} style={{...inputStyle, flex: 1}} />
+        </div>
+        
+        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#555' }}>תאריך יום הולדת שלך:</label>
+        <input type="date" value={profile.birthday || ''} onChange={e => setProfile({...profile, birthday: e.target.value})} style={inputStyle} />
+
+        <input type="text" placeholder="שם בן/בת הזוג (אופציונלי)" value={profile.spouse_name || ''} onChange={e => setProfile({...profile, spouse_name: e.target.value})} style={inputStyle} />
+        
         <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#555' }}>תאריך יום נישואין (לועזי):</label>
         <input type="date" value={profile.anniversary_date || ''} onChange={e => setProfile({...profile, anniversary_date: e.target.value})} style={inputStyle} />
-        <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '-10px', marginBottom: '15px' }}>* כדי למנוע כפילויות במסך בית הכנסת, מספיק שרק אחד מבני הזוג יזין את יום הנישואין.</p>
+        <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '-10px', marginBottom: '15px' }}>* כדי למנוע כפילויות, מספיק שרק אחד מבני הזוג יזין את יום הנישואין.</p>
         
-        <button onClick={saveProfile} style={{ width: '100%', backgroundColor: '#0A2E5C', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
+        <button onClick={saveProfile} style={{ width: '100%', backgroundColor: '#0A2E5C', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
           שמור פרטים
         </button>
-        {profileMsg && <p style={{ textAlign: 'center', color: 'green', marginTop: '10px', fontSize: '0.9rem' }}>{profileMsg}</p>}
+        {profileMsg && <p style={{ textAlign: 'center', color: 'green', marginTop: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>{profileMsg}</p>}
       </section>
 
       {/* 2. CHILDREN SECTION */}
@@ -174,7 +185,7 @@ export default function FamilyPage() {
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
           <input type="text" placeholder="שם פרטי" value={newChildName} onChange={e => setNewChildName(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: 2 }} />
           <input type="date" value={newChildDate} onChange={e => setNewChildDate(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: 2 }} />
-          <button onClick={handleAddChild} style={{ backgroundColor: '#C5A059', color: 'white', padding: '12px 15px', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>הוסף</button>
+          <button onClick={handleAddChild} style={{ backgroundColor: '#C5A059', color: 'white', padding: '12px 15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>הוסף</button>
         </div>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {members.map(m => (
@@ -196,7 +207,7 @@ export default function FamilyPage() {
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
           <input type="text" placeholder="שם הנפטר/ת" value={newAzkara.name} onChange={e => setNewAzkara({...newAzkara, name: e.target.value})} style={{ ...inputStyle, marginBottom: 0, flex: 2 }} />
           <input type="text" placeholder="תאריך עברי (למשל: כ״ג אייר)" value={newAzkara.hebrew_date} onChange={e => setNewAzkara({...newAzkara, hebrew_date: e.target.value})} style={{ ...inputStyle, marginBottom: 0, flex: 2 }} />
-          <button onClick={handleAddAzkara} style={{ backgroundColor: '#C5A059', color: 'white', padding: '12px 15px', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>הוסף</button>
+          <button onClick={handleAddAzkara} style={{ backgroundColor: '#C5A059', color: 'white', padding: '12px 15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>הוסף</button>
         </div>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {azkarot.map(a => (
