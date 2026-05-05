@@ -9,8 +9,9 @@ const supabase = createClient(
 
 const SYNAGOGUE_ID = 'c35cdd4c-7f74-4254-b012-16f4677fefa7'
 
+// Replaced duplicate sofZmanShma with sofZmanTfilla
 const defaultSettings = {
-  alotHaShachar: true, sunrise: true, sofZmanShmaMGA: true, sofZmanShma: true,
+  alotHaShachar: true, sunrise: true, sofZmanShmaMGA: true, sofZmanTfilla: true,
   chatzot: true, minchaGedola: true, minchaKetana: true, plagHaMincha: true, sunset: true, tzeit: true
 }
 
@@ -37,7 +38,7 @@ export default function ZmanimSettings() {
 
   const zmanimLabels: Record<string, string> = {
     alotHaShachar: 'עלות השחר', sunrise: 'נץ החמה', sofZmanShmaMGA: 'סוף זמן ק"ש (מג"א)',
-    sofZmanShma: 'סוף זמן ק"ש (גר"א)', chatzot: 'חצות היום', minchaGedola: 'מנחה גדולה',
+    sofZmanTfilla: 'סוף זמן תפילה (גר"א)', chatzot: 'חצות היום', minchaGedola: 'מנחה גדולה',
     minchaKetana: 'מנחה קטנה', plagHaMincha: 'פלג המנחה', sunset: 'שקיעה', tzeit: 'צאת הכוכבים'
   }
 
