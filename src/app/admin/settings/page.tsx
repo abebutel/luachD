@@ -7,13 +7,11 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// Default fallback in case the database is empty
+const SYNAGOGUE_ID = 'c35cdd4c-7f74-4254-b012-16f4677fefa7'
+
 const defaultSettings = {
-  sunrise: true,
-  sofZmanShma: true,
-  minchaGedola: true,
-  sunset: true,
-  tzeit: true
+  alotHaShachar: true, sunrise: true, sofZmanShmaMGA: true, sofZmanShma: true,
+  chatzot: true, minchaGedola: true, minchaKetana: true, plagHaMincha: true, sunset: true, tzeit: true
 }
 
 export default function ZmanimSettings() {
@@ -22,12 +20,8 @@ export default function ZmanimSettings() {
 
   useEffect(() => {
     async function fetchSettings() {
-      const { data } = await supabase.from('synagogues').select('zmanim_settings').eq('id', 'c35cdd4c-7f74-4254-b012-16f4677fefa7').single()
-      
-      // Only overwrite the defaults if we actually got data from Supabase
-      if (data && data.zmanim_settings) {
-        setSettings(data.zmanim_settings)
-      }
+      const { data } = await supabase.from('synagogues').select('zmanim_settings').eq('id', SYNAGOGUE_ID).single()
+      if (data && data.zmanim_settings) setSettings({ ...defaultSettings, ...data.zmanim_settings })
       setLoading(false)
     }
     fetchSettings()
@@ -36,32 +30,30 @@ export default function ZmanimSettings() {
   const toggleSetting = async (key: string) => {
     const newSettings = { ...settings, [key]: !settings[key] }
     setSettings(newSettings)
-    
-    // Save to database instantly
-    await supabase.from('synagogues').update({ zmanim_settings: newSettings }).eq('id', 'c35cdd4c-7f74-4254-b012-16f4677fefa7')
+    await supabase.from('synagogues').update({ zmanim_settings: newSettings }).eq('id', SYNAGOGUE_ID)
   }
 
   if (loading) return <p style={{ textAlign: 'center', marginTop: '50px' }}>טוען הגדרות...</p>
+
+  const zmanimLabels: Record<string, string> = {
+    alotHaShachar: 'עלות השחר', sunrise: 'נץ החמה', sofZmanShmaMGA: 'סוף זמן ק"ש (מג"א)',
+    sofZmanShma: 'סוף זמן ק"ש (גר"א)', chatzot: 'חצות היום', minchaGedola: 'מנחה גדולה',
+    minchaKetana: 'מנחה קטנה', plagHaMincha: 'פלג המנחה', sunset: 'שקיעה', tzeit: 'צאת הכוכבים'
+  }
 
   return (
     <div dir="rtl" style={{ padding: '50px', maxWidth: '500px', margin: 'auto', fontFamily: 'Heebo, sans-serif' }}>
       <h1 style={{ color: '#002366' }}>הגדרות תצוגת זמנים</h1>
       <p>בחר אילו זמנים יופיעו על המסך בבית הכנסת:</p>
       
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
-        {Object.keys(settings).map(key => (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '20px' }}>
+        {Object.keys(zmanimLabels).map(key => (
           <label key={key} style={{ fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <input 
-              type="checkbox" 
-              checked={settings[key]} 
-              onChange={() => toggleSetting(key)}
+              type="checkbox" checked={settings[key]} onChange={() => toggleSetting(key)}
               style={{ width: '20px', height: '20px' }}
             />
-            {key === 'sunrise' && 'נץ החמה'}
-            {key === 'sofZmanShma' && 'סוף זמן ק"ש'}
-            {key === 'minchaGedola' && 'מנחה גדולה'}
-            {key === 'sunset' && 'שקיעה'}
-            {key === 'tzeit' && 'צאת הכוכבים'}
+            {zmanimLabels[key]}
           </label>
         ))}
       </div>
