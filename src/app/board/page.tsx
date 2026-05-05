@@ -96,15 +96,16 @@ export default function SynagogueBoard() {
     </div>
   )
 
+  // TIGHTENED PRAYER SECTION TO PREVENT SCROLLBARS
   const renderPrayerSection = (title: string, list: any[]) => {
     if (!list || list.length === 0) return null
     return (
-      <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ color: '#3A6EA5', fontSize: '1.8rem', borderBottom: '2px solid #C5A059', paddingBottom: '5px', marginBottom: '10px', textAlign: 'center', width: '80%' }}>{title}</div>
+      <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+        <div style={{ color: '#3A6EA5', fontSize: '1.4rem', borderBottom: '2px solid #C5A059', paddingBottom: '2px', marginBottom: '5px', textAlign: 'center', width: '80%', fontWeight: 'bold' }}>{title}</div>
         <div style={{ width: '90%', maxWidth: '350px' }}>
           {list.map((p: any, i: number) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', padding: '5px 0' }}>
-              <span>{p.name}:</span> <span>{p.time}</span>
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', padding: '3px 0', fontSize: '1.4rem' }}>
+              <span>{p.name}:</span> <strong>{p.time}</strong>
             </div>
           ))}
         </div>
@@ -115,7 +116,6 @@ export default function SynagogueBoard() {
   return (
     <div dir="rtl" style={{ backgroundColor: '#06142E', color: '#ffffff', height: '100vh', width: '100vw', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', fontFamily: 'Heebo, sans-serif' }}>
       
-      {/* Ticker Animation Style */}
       <style>{`
         @keyframes tickerScroll {
           0% { transform: translateX(-100vw); }
@@ -126,26 +126,37 @@ export default function SynagogueBoard() {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <FabricWave isRight={true} />
         
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '10px 30px' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '15px 30px' }}>
           
-          <header style={{ textAlign: 'right', paddingBottom: '5px' }}>
-            {shabbatData?.parasha && <div style={{ fontSize: '1.6rem', color: '#F9F8F3' }}>פרשת {shabbatData.parasha}</div>}
+          {/* NEW PROMINENT HEADER */}
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '15px', borderBottom: '2px solid #1a335c', marginBottom: '15px' }}>
+            <div style={{ fontSize: '1.6rem', color: '#C5A059', fontWeight: 'bold' }}>
+              {shabbatData?.candles && <span>🕯️ הדלקת נרות: {formatTime(shabbatData.candles)} &nbsp;|&nbsp; </span>}
+              {shabbatData?.havdalah && <span>🍷 צאת שבת: {formatTime(shabbatData.havdalah)}</span>}
+            </div>
+            <div style={{ fontSize: '3rem', color: '#C5A059', fontWeight: 'bold', textShadow: '0 0 15px rgba(197, 160, 89, 0.4)' }}>
+              קהילת עורי צפון
+            </div>
+            <div style={{ fontSize: '1.6rem', color: '#F9F8F3', fontWeight: 'bold' }}>
+              {shabbatData?.parasha && <span>פרשת {shabbatData.parasha}</span>}
+            </div>
           </header>
 
-          <div style={{ textAlign: 'center', margin: '0 0 3vh 0' }}>
-            <div style={{ fontSize: '10rem', fontWeight: 'bold', color: '#e6f1ff', textShadow: '0 0 25px #64ffda', fontVariantNumeric: 'tabular-nums', lineHeight: '1' }}>
+          <div style={{ textAlign: 'center', margin: '0 0 2vh 0' }}>
+            <div style={{ fontSize: '9.5rem', fontWeight: 'bold', color: '#e6f1ff', textShadow: '0 0 25px #64ffda', fontVariantNumeric: 'tabular-nums', lineHeight: '1' }}>
               {time.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </div>
-            <div style={{ fontSize: '2.5rem', color: '#C5A059', marginTop: '10px' }}>יום {getHebrewDayName()}, {hebrewDate}</div>
+            <div style={{ fontSize: '2.2rem', color: '#C5A059', marginTop: '5px' }}>יום {getHebrewDayName()}, {hebrewDate}</div>
           </div>
 
           <div style={{ display: 'flex', flex: 1, gap: '25px', overflow: 'hidden', paddingBottom: '15px' }}>
             
-            {/* Prayers Column */}
+            {/* Prayers Column (Scroll explicitly hidden) */}
             <section style={{ flex: 1, backgroundColor: '#F9F8F3', borderRadius: '15px', border: '3px solid #C5A059', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)', position: 'relative' }}>
-              <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '15px', fontSize: '2.2rem', fontWeight: 'bold', zIndex: 2 }}>זמני תפילות</div>
+              <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '12px', fontSize: '2rem', fontWeight: 'bold', zIndex: 2 }}>זמני תפילות</div>
               {holidayIcon && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '15rem', opacity: 0.1, zIndex: 1, pointerEvents: 'none' }}>{holidayIcon}</div>}
-              <div style={{ padding: '20px 0', flex: 1, fontSize: '1.6rem', lineHeight: '2', color: '#0B2046', fontWeight: 'bold', overflowY: 'auto', zIndex: 2 }}>
+              
+              <div style={{ padding: '15px 0', flex: 1, color: '#0B2046', overflow: 'hidden', zIndex: 2 }}>
                 {renderPrayerSection("ימי חול", prayers.weekday)}
                 {renderPrayerSection("שבת קודש", prayers.shabbat)}
                 {renderPrayerSection("חגים ומועדים", prayers.chagim)}
@@ -154,38 +165,35 @@ export default function SynagogueBoard() {
 
             {/* Zmanim Column */}
             <section style={{ flex: 1, backgroundColor: '#F9F8F3', borderRadius: '15px', border: '3px solid #C5A059', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
-              <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '15px', fontSize: '2.2rem', fontWeight: 'bold' }}>זמני היום</div>
-              <div style={{ padding: '20px 0', flex: 1, fontSize: '1.6rem', lineHeight: '2', color: '#0B2046', fontWeight: '500', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                
+              <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '12px', fontSize: '2rem', fontWeight: 'bold' }}>זמני היום</div>
+              <div style={{ padding: '15px 0', flex: 1, fontSize: '1.5rem', lineHeight: '1.9', color: '#0B2046', fontWeight: '500', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ width: '90%', maxWidth: '350px' }}>
-                  {settings?.alotHaShachar && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc' }}><span>עלות השחר:</span> <strong>{formatTime(zmanim.alotHaShachar)}</strong></div>}
-                  {settings?.sunrise && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc' }}><span>נץ החמה:</span> <strong>{formatTime(zmanim.sunrise)}</strong></div>}
-                  {settings?.sofZmanShmaMGA && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc' }}><span>סוף זמן ק"ש (מג"א):</span> <strong>{formatTime(zmanim.sofZmanShmaMGA)}</strong></div>}
-                  {settings?.sofZmanTfilla && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc' }}><span>סוף זמן תפילה (גר"א):</span> <strong>{formatTime(zmanim.sofZmanTfilla)}</strong></div>}
-                  {settings?.chatzot && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc' }}><span>חצות היום:</span> <strong>{formatTime(zmanim.chatzot)}</strong></div>}
-                  {settings?.minchaGedola && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc' }}><span>מנחה גדולה:</span> <strong>{formatTime(zmanim.minchaGedola)}</strong></div>}
-                  {settings?.minchaKetana && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc' }}><span>מנחה קטנה:</span> <strong>{formatTime(zmanim.minchaKetana)}</strong></div>}
-                  {settings?.plagHaMincha && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc' }}><span>פלג המנחה:</span> <strong>{formatTime(zmanim.plagHaMincha)}</strong></div>}
-                  {settings?.sunset && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc' }}><span>שקיעה:</span> <strong>{formatTime(zmanim.sunset)}</strong></div>}
-                  {/* Fallback chain for Tzeit to ensure it always renders */}
-                  {settings?.tzeit && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc' }}><span>צאת הכוכבים:</span> <strong>{formatTime(zmanim.tzeit7023deg || zmanim.tzeit853deg || zmanim.tzeit50min || zmanim.tzeit)}</strong></div>}
+                  {settings?.alotHaShachar && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>עלות השחר:</span> <strong>{formatTime(zmanim.alotHaShachar)}</strong></div>}
+                  {settings?.sunrise && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>נץ החמה:</span> <strong>{formatTime(zmanim.sunrise)}</strong></div>}
+                  {settings?.sofZmanShmaMGA && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>סוף זמן ק"ש (מג"א):</span> <strong>{formatTime(zmanim.sofZmanShmaMGA)}</strong></div>}
+                  {settings?.sofZmanTfilla && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>סוף זמן תפילה (גר"א):</span> <strong>{formatTime(zmanim.sofZmanTfilla)}</strong></div>}
+                  {settings?.chatzot && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>חצות היום:</span> <strong>{formatTime(zmanim.chatzot)}</strong></div>}
+                  {settings?.minchaGedola && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>מנחה גדולה:</span> <strong>{formatTime(zmanim.minchaGedola)}</strong></div>}
+                  {settings?.minchaKetana && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>מנחה קטנה:</span> <strong>{formatTime(zmanim.minchaKetana)}</strong></div>}
+                  {settings?.plagHaMincha && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>פלג המנחה:</span> <strong>{formatTime(zmanim.plagHaMincha)}</strong></div>}
+                  {settings?.sunset && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>שקיעה:</span> <strong>{formatTime(zmanim.sunset)}</strong></div>}
+                  {settings?.tzeit && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>צאת הכוכבים:</span> <strong>{formatTime(zmanim.tzeit7023deg || zmanim.tzeit853deg || zmanim.tzeit50min || zmanim.tzeit)}</strong></div>}
                 </div>
-
               </div>
             </section>
 
-            {/* Community Column */}
+            {/* Community Column (Scroll explicitly hidden) */}
             <section style={{ flex: 1, backgroundColor: '#F9F8F3', borderRadius: '15px', border: '3px solid #C5A059', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
-              <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '15px', fontSize: '2.2rem', fontWeight: 'bold' }}>חיי הקהילה</div>
-              <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
-                {shabbatNote && <div style={{ marginBottom: '15px', padding: '15px', background: '#e3ecf5', borderRight: '4px solid #3A6EA5', borderRadius: '5px', color: '#0B2046', fontSize: '1.6rem', fontWeight: 'bold' }}>🍷 {shabbatNote}</div>}
+              <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '12px', fontSize: '2rem', fontWeight: 'bold' }}>חיי הקהילה</div>
+              <div style={{ padding: '15px 20px', flex: 1, overflow: 'hidden' }}>
+                {shabbatNote && <div style={{ marginBottom: '15px', padding: '10px 15px', background: '#e3ecf5', borderRight: '4px solid #3A6EA5', borderRadius: '5px', color: '#0B2046', fontSize: '1.5rem', fontWeight: 'bold' }}>🍷 {shabbatNote}</div>}
                 
                 {events.length > 0 ? (
-                  <ul style={{ listStyle: 'none', padding: 0 }}>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {events.map((evt: any, idx) => (
-                      <li key={idx} style={{ marginBottom: '15px', borderBottom: '1px solid #ddd', paddingBottom: '10px' }}>
-                        <div style={{ color: '#0B2046', fontWeight: 'bold', fontSize: '1.5rem' }}>{evt.icon} {evt.type}: {evt.name}</div>
-                        <div style={{ fontSize: '1.3rem', color: '#555' }}>{evt.hebrewDateStr} ({evt.timeText})</div>
+                      <li key={idx} style={{ marginBottom: '12px', borderBottom: '1px solid #ddd', paddingBottom: '8px' }}>
+                        <div style={{ color: '#0B2046', fontWeight: 'bold', fontSize: '1.4rem' }}>{evt.icon} {evt.type}: {evt.name}</div>
+                        <div style={{ fontSize: '1.2rem', color: '#555' }}>{evt.hebrewDateStr} ({evt.timeText})</div>
                       </li>
                     ))}
                   </ul>
@@ -197,10 +205,9 @@ export default function SynagogueBoard() {
         <FabricWave />
       </div>
 
-      {/* Scrolling Ticker at the absolute bottom */}
       {announcements.length > 0 && (
         <div style={{ height: '60px', backgroundColor: '#0A2E5C', color: '#F9F8F3', display: 'flex', alignItems: 'center', overflow: 'hidden', borderTop: '3px solid #C5A059' }}>
-          <div style={{ whiteSpace: 'nowrap', animation: 'tickerScroll 25s linear infinite', fontSize: '2rem', fontWeight: 'bold' }}>
+          <div style={{ whiteSpace: 'nowrap', animation: 'tickerScroll 30s linear infinite', fontSize: '2rem', fontWeight: 'bold' }}>
             {announcements.map((m, i) => (
               <span key={i} style={{ margin: '0 50px' }}>🔸 {m} 🔸</span>
             ))}
