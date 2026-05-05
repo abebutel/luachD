@@ -126,6 +126,24 @@ export default function SynagogueBoard() {
         const seenAnniversaries = new Set(); // Safety Net
         
         profilesRes.data.forEach(profile => {
+           // Check Parent's Birthday
+          if (profile.birthday && profile.first_name && profile.last_name) {
+            const bdayDate = new Date(profile.birthday);
+            bdayDate.setFullYear(today.getFullYear());
+            if (bdayDate < new Date(today.getTime() - 86400000)) bdayDate.setFullYear(today.getFullYear() + 1);
+            
+            const diffDaysBday = Math.ceil((bdayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (diffDaysBday >= 0 && diffDaysBday <= 7) {
+              finalEvents.push({
+                icon: '🎉',
+                type: 'יום הולדת',
+                name: `${profile.first_name} ${profile.last_name}`, // Notice no age is added here!
+                hebrewDateStr: bdayDate.toLocaleDateString('he-IL'),
+                timeText: diffDaysBday === 0 ? 'היום!' : `בעוד ${diffDaysBday} ימים`
+              });
+            }
+          }
           if (profile.anniversary_date && profile.last_name && profile.spouse_name) {
             const annivDate = new Date(profile.anniversary_date);
             annivDate.setFullYear(today.getFullYear());
