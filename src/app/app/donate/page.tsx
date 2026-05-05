@@ -24,7 +24,7 @@ export default function DonatePage() {
         <h2 style={{ color: '#3A6EA5', marginTop: 0, fontSize: '1.5rem', marginBottom: '20px' }}>📱 תרומה מהירה באפליקציה</h2>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <a href="[https://payboxapp.page.link/YOUR_LINK_HERE](https://links.payboxapp.com/e308WYB4JUb)" target="_blank" rel="noreferrer" style={{ backgroundColor: '#00c6e8', color: 'white', padding: '16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '1.3rem', boxShadow: '0 2px 4px rgba(0,198,232,0.3)' }}>
+          <a href="[https://links.payboxapp.com/e308WYB4JUb](https://links.payboxapp.com/e308WYB4JUb)" target="_blank" rel="noreferrer" style={{ backgroundColor: '#00c6e8', color: 'white', padding: '16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '1.3rem', boxShadow: '0 2px 4px rgba(0,198,232,0.3)' }}>
             תרומה ב- PayBox
           </a>
           <a href="[https://bitpay.co.il/YOUR_LINK_HERE](https://bitpay.co.il/YOUR_LINK_HERE)" target="_blank" rel="noreferrer" style={{ backgroundColor: '#003366', color: 'white', padding: '16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '1.3rem', boxShadow: '0 2px 4px rgba(0,51,102,0.3)' }}>
@@ -50,7 +50,7 @@ export default function DonatePage() {
             <li><strong>מספר חשבון:</strong> 190459</li>
           </ul>
         </div>
-        <p style={{ fontSize: '0.9rem', color: '#888', marginTop: '15px', textAlign: 'center' }}>* ניתן להעביר אישור העברה לגבאי לעדכון.</p>
+        <p style={{ fontSize: '0.9rem', color: '#888', marginTop: '15px', textAlign: 'center' }}>* ניתן להעביר אישור העברה לרוני לעדכון.</p>
       </div>
 
     </div>
