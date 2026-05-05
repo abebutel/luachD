@@ -15,12 +15,15 @@ export default function FamilyPage() {
   const [authMsg, setAuthMsg] = useState('')
 
   // Data States
+  const [profile, setProfile] = useState({ last_name: '', spouse_name: '', anniversary_date: '' })
   const [members, setMembers] = useState<any[]>([])
   const [azkarot, setAzkarot] = useState<any[]>([])
 
   // Form States
-  const [newMember, setNewMember] = useState({ full_name: '', birthday: '' })
+  const [newChildName, setNewChildName] = useState('')
+  const [newChildDate, setNewChildDate] = useState('')
   const [newAzkara, setNewAzkara] = useState({ name: '', hebrew_date: '' })
+  const [profileMsg, setProfileMsg] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -33,17 +36,17 @@ export default function FamilyPage() {
       setSession(session)
       if (session) fetchData(session.user.id)
     })
-
     return () => subscription.unsubscribe()
   }, [])
 
-  // --- DATA FETCHING ---
   const fetchData = async (userId: string) => {
     setLoading(true)
-    const [memRes, azkRes] = await Promise.all([
-      supabase.from('members').select('*').eq('user_id', userId),
+    const [profRes, memRes, azkRes] = await Promise.all([
+      supabase.from('user_profiles').select('*').eq('user_id', userId).single(),
+      supabase.from('members').select('*').eq('user_id', userId).eq('is_child', true),
       supabase.from('azkarot').select('*').eq('user_id', userId)
     ])
+    if (profRes.data) setProfile(profRes.data)
     if (memRes.data) setMembers(memRes.data)
     if (azkRes.data) setAzkarot(azkRes.data)
     setLoading(false)
@@ -65,24 +68,40 @@ export default function FamilyPage() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
+    setProfile({ last_name: '', spouse_name: '', anniversary_date: '' })
     setMembers([])
     setAzkarot([])
   }
 
-  // --- ADD / DELETE LOGIC ---
-  const handleAddMember = async () => {
-    if (!newMember.full_name || !newMember.birthday) return alert("יש למלא שם ותאריך לידה")
+  // --- PROFILE LOGIC ---
+  const saveProfile = async () => {
+    setProfileMsg('שומר...')
+    const upsertData = { 
+      user_id: session.user.id, 
+      last_name: profile.last_name, 
+      spouse_name: profile.spouse_name, 
+      anniversary_date: profile.anniversary_date || null 
+    }
+    await supabase.from('user_profiles').upsert(upsertData)
+    setProfileMsg('נשמר בהצלחה!')
+    setTimeout(() => setProfileMsg(''), 3000)
+  }
+
+  // --- CHILD & AZKARA LOGIC ---
+  const handleAddChild = async () => {
+    if (!profile.last_name) return alert("יש לשמור שם משפחה קודם")
+    if (!newChildName || !newChildDate) return alert("יש למלא שם ותאריך לידה")
     
+    const fullName = `${newChildName} ${profile.last_name}`
     const { data, error } = await supabase.from('members').insert([{ 
-      ...newMember, 
-      user_id: session.user.id,
-      is_approved: true // Auto-approve for pilot, Gabbai can change later
+      full_name: fullName, birthday: newChildDate, is_child: true, user_id: session.user.id, is_approved: true 
     }]).select()
 
     if (!error && data) {
       setMembers([...members, data[0]])
-      setNewMember({ full_name: '', birthday: '' })
-    } else alert("שגיאה בהוספת בן משפחה")
+      setNewChildName('')
+      setNewChildDate('')
+    }
   }
 
   const handleDeleteMember = async (id: string) => {
@@ -92,24 +111,17 @@ export default function FamilyPage() {
 
   const handleAddAzkara = async () => {
     if (!newAzkara.name || !newAzkara.hebrew_date) return alert("יש למלא שם ותאריך עברי")
-    
-    const { data, error } = await supabase.from('azkarot').insert([{ 
-      ...newAzkara, 
-      user_id: session.user.id,
-      is_active: true
-    }]).select()
-
+    const { data, error } = await supabase.from('azkarot').insert([{ ...newAzkara, user_id: session.user.id, is_active: true }]).select()
     if (!error && data) {
       setAzkarot([...azkarot, data[0]])
       setNewAzkara({ name: '', hebrew_date: '' })
-    } else alert("שגיאה בהוספת אזכרה")
+    }
   }
 
   const handleDeleteAzkara = async (id: string) => {
     await supabase.from('azkarot').delete().eq('id', id)
     setAzkarot(azkarot.filter(a => a.id !== id))
   }
-
 
   if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#0A2E5C' }}>טוען נתונים...</div>
 
@@ -120,15 +132,12 @@ export default function FamilyPage() {
         <div style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '30px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', textAlign: 'center', marginTop: '40px' }}>
           <h1 style={{ color: '#0A2E5C', marginBottom: '10px' }}>התחברות לאזור האישי</h1>
           <p style={{ color: '#555', marginBottom: '25px', fontSize: '0.9rem' }}>כדי לנהל את האזכרות והימי הולדת של המשפחה, אנא התחבר או הרשם למערכת.</p>
-          
           <input type="email" placeholder="אימייל" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
           <input type="password" placeholder="סיסמה (לפחות 6 תווים)" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
-          
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={handleSignIn} style={{ flex: 1, backgroundColor: '#0A2E5C', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>התחבר</button>
-            <button onClick={handleSignUp} style={{ flex: 1, backgroundColor: '#7498B5', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>הרשמה</button>
+            <button onClick={handleSignIn} style={{ flex: 1, backgroundColor: '#0A2E5C', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>התחבר</button>
+            <button onClick={handleSignUp} style={{ flex: 1, backgroundColor: '#7498B5', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>הרשמה</button>
           </div>
-          
           {authMsg && <p style={{ marginTop: '20px', color: authMsg.includes('שגיאה') ? 'red' : 'green', fontWeight: 'bold' }}>{authMsg}</p>}
         </div>
       </div>
@@ -144,18 +153,29 @@ export default function FamilyPage() {
         <button onClick={handleSignOut} style={{ backgroundColor: 'transparent', border: '1px solid #dc3545', color: '#dc3545', padding: '5px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' }}>התנתק</button>
       </header>
 
-      {/* BIRTHDAYS SECTION */}
+      {/* 1. PROFILE SECTION */}
       <section style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-        <h2 style={{ color: '#3A6EA5', marginTop: 0, borderBottom: '2px solid #F0F4F8', paddingBottom: '10px' }}>🎉 ימי הולדת וימי נישואין</h2>
+        <h2 style={{ color: '#3A6EA5', marginTop: 0, borderBottom: '2px solid #F0F4F8', paddingBottom: '10px' }}>🏠 פרטי המשפחה (קבוע)</h2>
+        <input type="text" placeholder="שם משפחה (למשל: כהן)" value={profile.last_name} onChange={e => setProfile({...profile, last_name: e.target.value})} style={inputStyle} />
+        <input type="text" placeholder="שם בן/בת הזוג (אופציונלי)" value={profile.spouse_name} onChange={e => setProfile({...profile, spouse_name: e.target.value})} style={inputStyle} />
+        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#555' }}>תאריך יום נישואין (לועזי):</label>
+        <input type="date" value={profile.anniversary_date || ''} onChange={e => setProfile({...profile, anniversary_date: e.target.value})} style={inputStyle} />
+        <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '-10px', marginBottom: '15px' }}>* כדי למנוע כפילויות במסך בית הכנסת, מספיק שרק אחד מבני הזוג יזין את יום הנישואין.</p>
         
-        {/* Add Form */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
-          <input type="text" placeholder="שם החוגג/ת" value={newMember.full_name} onChange={e => setNewMember({...newMember, full_name: e.target.value})} style={{ ...inputStyle, marginBottom: 0, flex: 2 }} />
-          <input type="date" value={newMember.birthday} onChange={e => setNewMember({...newMember, birthday: e.target.value})} style={{ ...inputStyle, marginBottom: 0, flex: 2 }} />
-          <button onClick={handleAddMember} style={{ backgroundColor: '#C5A059', color: 'white', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>הוסף</button>
-        </div>
+        <button onClick={saveProfile} style={{ width: '100%', backgroundColor: '#0A2E5C', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
+          שמור פרטים
+        </button>
+        {profileMsg && <p style={{ textAlign: 'center', color: 'green', marginTop: '10px', fontSize: '0.9rem' }}>{profileMsg}</p>}
+      </section>
 
-        {/* List */}
+      {/* 2. CHILDREN SECTION */}
+      <section style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+        <h2 style={{ color: '#3A6EA5', marginTop: 0, borderBottom: '2px solid #F0F4F8', paddingBottom: '10px' }}>🎈 ילדי המשפחה (ימי הולדת)</h2>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
+          <input type="text" placeholder="שם פרטי" value={newChildName} onChange={e => setNewChildName(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: 2 }} />
+          <input type="date" value={newChildDate} onChange={e => setNewChildDate(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: 2 }} />
+          <button onClick={handleAddChild} style={{ backgroundColor: '#C5A059', color: 'white', padding: '12px 15px', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>הוסף</button>
+        </div>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {members.map(m => (
             <li key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
@@ -166,22 +186,18 @@ export default function FamilyPage() {
               </div>
             </li>
           ))}
-          {members.length === 0 && <p style={{ color: '#888', fontSize: '0.9rem' }}>טרם הוספו ימי הולדת.</p>}
+          {members.length === 0 && <p style={{ color: '#888', fontSize: '0.9rem' }}>טרם הוספו ילדים.</p>}
         </ul>
       </section>
 
-      {/* AZKAROT SECTION */}
+      {/* 3. AZKAROT SECTION */}
       <section style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
         <h2 style={{ color: '#3A6EA5', marginTop: 0, borderBottom: '2px solid #F0F4F8', paddingBottom: '10px' }}>🕯️ אזכרות</h2>
-        
-        {/* Add Form */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
           <input type="text" placeholder="שם הנפטר/ת" value={newAzkara.name} onChange={e => setNewAzkara({...newAzkara, name: e.target.value})} style={{ ...inputStyle, marginBottom: 0, flex: 2 }} />
           <input type="text" placeholder="תאריך עברי (למשל: כ״ג אייר)" value={newAzkara.hebrew_date} onChange={e => setNewAzkara({...newAzkara, hebrew_date: e.target.value})} style={{ ...inputStyle, marginBottom: 0, flex: 2 }} />
-          <button onClick={handleAddAzkara} style={{ backgroundColor: '#C5A059', color: 'white', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>הוסף</button>
+          <button onClick={handleAddAzkara} style={{ backgroundColor: '#C5A059', color: 'white', padding: '12px 15px', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>הוסף</button>
         </div>
-
-        {/* List */}
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {azkarot.map(a => (
             <li key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>

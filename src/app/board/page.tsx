@@ -90,16 +90,75 @@ export default function SynagogueBoard() {
   useEffect(() => {
     async function fetchData() {
       const { data: synData } = await supabase.from('synagogues').select('zmanim_settings, prayer_times, announcements, shabbat_note').eq('id', SYNAGOGUE_ID).single()
-      
       if (synData?.zmanim_settings) setSettings({ ...defaultSettings, ...synData.zmanim_settings })
       if (synData?.prayer_times && Array.isArray(synData.prayer_times.weekday)) setPrayers(synData.prayer_times)
       if (synData?.shabbat_note) setShabbatNote(synData.shabbat_note)
       if (synData?.announcements) setAnnouncements(synData.announcements)
 
-      const { data: membersData } = await supabase.from('members').select('*').eq('is_approved', true)
-      const { data: azkarotData } = await supabase.from('azkarot').select('*').eq('is_active', true)
-      if (membersData) setEvents(getUpcomingHebrewEvents(membersData, azkarotData || []))
+      // Fetch all required tables
+      const [membersRes, azkarotRes, profilesRes] = await Promise.all([
+        supabase.from('members').select('*').eq('is_approved', true),
+        supabase.from('azkarot').select('*').eq('is_active', true),
+        supabase.from('user_profiles').select('*')
+      ]);
+
+      let finalEvents = [];
+
+      // 1. Process standard events (Birthdays/Azkarot) via your logic
+      if (membersRes.data) {
+        let baseEvents = getUpcomingHebrewEvents(membersRes.data, azkarotRes.data || []);
+        
+        // Append child ages!
+        finalEvents = baseEvents.map(evt => {
+          const originalMember = membersRes.data.find(m => m.full_name === evt.name);
+          let ageText = '';
+          if (originalMember && originalMember.is_child && originalMember.birthday) {
+            const age = new Date().getFullYear() - new Date(originalMember.birthday).getFullYear();
+            ageText = ` (גיל ${age})`;
+          }
+          return { ...evt, name: `${evt.name}${ageText}` };
+        });
+      }
+
+      // 2. Process Anniversaries with Deduplication
+      if (profilesRes.data) {
+        const today = new Date();
+        const seenAnniversaries = new Set(); // Safety Net
+        
+        profilesRes.data.forEach(profile => {
+          if (profile.anniversary_date && profile.last_name && profile.spouse_name) {
+            const annivDate = new Date(profile.anniversary_date);
+            annivDate.setFullYear(today.getFullYear());
+            
+            // If it already passed this year, check next year
+            if (annivDate < new Date(today.getTime() - 86400000)) {
+              annivDate.setFullYear(today.getFullYear() + 1);
+            }
+
+            const diffDays = Math.ceil((annivDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+            // If anniversary is within the next 7 days
+            if (diffDays >= 0 && diffDays <= 7) {
+              const dedupKey = `${profile.anniversary_date}-${profile.last_name}`;
+              
+              if (!seenAnniversaries.has(dedupKey)) {
+                seenAnniversaries.add(dedupKey); // Block exact duplicates
+                finalEvents.push({
+                  icon: '💍',
+                  type: 'יום נישואין',
+                  name: `משפחת ${profile.last_name} (${profile.spouse_name})`,
+                  hebrewDateStr: annivDate.toLocaleDateString('he-IL'),
+                  timeText: diffDays === 0 ? 'היום!' : `בעוד ${diffDays} ימים`
+                });
+              }
+            }
+          }
+        });
+      }
+
+      setEvents(finalEvents);
     }
+    
     fetchData()
     const dataTimer = setInterval(fetchData, 300000) 
     return () => clearInterval(dataTimer)
