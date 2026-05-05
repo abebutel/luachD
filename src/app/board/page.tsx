@@ -16,27 +16,21 @@ const formatTime = (dateString: string) => {
   return new Date(dateString).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-const getHebrewDayName = () => {
-  const days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
-  return days[new Date().getDay()]
-}
+const getHebrewDayName = () => ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"][new Date().getDay()]
 
-// Ensure these default to TRUE so the board isn't blank!
-const defaultSettings = {
-  alotHaShachar: true, sunrise: true, sofZmanShmaMGA: true, sofZmanShma: true,
-  chatzot: true, minchaGedola: true, minchaKetana: true, plagHaMincha: true, sunset: true, tzeit: true
-}
+const defaultSettings = { alotHaShachar: true, sunrise: true, sofZmanShmaMGA: true, sofZmanShma: true, chatzot: true, minchaGedola: true, minchaKetana: true, plagHaMincha: true, sunset: true, tzeit: true }
 
 export default function SynagogueBoard() {
   const [time, setTime] = useState(new Date())
   const [events, setEvents] = useState<any[]>([])
   const [zmanim, setZmanim] = useState<any>({})
   const [settings, setSettings] = useState<any>(defaultSettings)
-  const [prayers, setPrayers] = useState<any>({})
+  const [prayers, setPrayers] = useState<any>({ weekday: [], shabbat: [], chagim: [] })
   const [announcements, setAnnouncements] = useState<string[]>([])
   const [shabbatData, setShabbatData] = useState<any>(null)
   const [shabbatNote, setShabbatNote] = useState('')
   const [hebrewDate, setHebrewDate] = useState('')
+  const [holidayIcon, setHolidayIcon] = useState<string | null>(null)
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000)
@@ -58,11 +52,22 @@ export default function SynagogueBoard() {
         const dataShab = await resShab.json()
         
         const parashaItem = dataShab.items.find((i: any) => i.category === 'parashat' || (i.category === 'holiday' && i.subcat === 'shabbat'))
-        const parasha = parashaItem ? (parashaItem.hebrew || parashaItem.title_orig) : ''
-        const candles = dataShab.items.find((i: any) => i.category === 'candles')?.date
-        const havdalah = dataShab.items.find((i: any) => i.category === 'havdalah')?.date
-        
-        setShabbatData({ parasha, candles, havdalah })
+        setShabbatData({ 
+          parasha: parashaItem ? (parashaItem.hebrew || parashaItem.title_orig) : '', 
+          candles: dataShab.items.find((i: any) => i.category === 'candles')?.date, 
+          havdalah: dataShab.items.find((i: any) => i.category === 'havdalah')?.date 
+        })
+
+        // Check for specific Holidays to set the Watermark theme
+        const holidayTitle = dataShab.items.find((i: any) => i.category === 'holiday')?.title_orig || ''
+        if (holidayTitle.includes('Rosh Hashana')) setHolidayIcon('🍎🍯')
+        else if (holidayTitle.includes('Yom Kippur')) setHolidayIcon('🤍🕍')
+        else if (holidayTitle.includes('Sukkot')) setHolidayIcon('🍋🌿')
+        else if (holidayTitle.includes('Chanukah')) setHolidayIcon('🕎🍩')
+        else if (holidayTitle.includes('Purim')) setHolidayIcon('🎭🍷')
+        else if (holidayTitle.includes('Pesach')) setHolidayIcon('🍷🥖')
+        else if (holidayTitle.includes('Shavuot')) setHolidayIcon('📜🌾')
+
       } catch (error) { console.error("Failed Hebcal", error) }
     }
     fetchHebcal()
@@ -73,7 +78,7 @@ export default function SynagogueBoard() {
       const { data: synData } = await supabase.from('synagogues').select('zmanim_settings, prayer_times, announcements, shabbat_note').eq('id', SYNAGOGUE_ID).single()
       
       if (synData?.zmanim_settings) setSettings({ ...defaultSettings, ...synData.zmanim_settings })
-      if (synData?.prayer_times) setPrayers(synData.prayer_times)
+      if (synData?.prayer_times && Array.isArray(synData.prayer_times.weekday)) setPrayers(synData.prayer_times)
       if (synData?.shabbat_note) setShabbatNote(synData.shabbat_note)
       if (synData?.announcements) setAnnouncements(synData.announcements)
 
@@ -87,68 +92,62 @@ export default function SynagogueBoard() {
   }, [])
 
   const FabricWave = ({ isRight }: { isRight?: boolean }) => (
-    <div style={{
-      width: '60px', height: '100%',
-      background: 'linear-gradient(180deg, #0A2E5C 0%, #3A6EA5 50%, #7498B5 100%)',
-      borderLeft: isRight ? '4px solid #C5A059' : 'none',
-      borderRight: !isRight ? '4px solid #C5A059' : 'none',
-      boxShadow: isRight ? 'inset 10px 0 20px rgba(0,0,0,0.6)' : 'inset -10px 0 20px rgba(0,0,0,0.6)'
-    }}>
-      <div style={{
-        width: '100%', height: '100%',
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.2) 100%)',
-        borderRadius: isRight ? '40% 0 0 40%' : '0 40% 40% 0',
-      }} />
+    <div style={{ width: '60px', height: '100%', background: 'linear-gradient(180deg, #0A2E5C 0%, #3A6EA5 50%, #7498B5 100%)', borderLeft: isRight ? '4px solid #C5A059' : 'none', borderRight: !isRight ? '4px solid #C5A059' : 'none', boxShadow: isRight ? 'inset 10px 0 20px rgba(0,0,0,0.6)' : 'inset -10px 0 20px rgba(0,0,0,0.6)' }}>
+      <div style={{ width: '100%', height: '100%', background: 'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.2) 100%)', borderRadius: isRight ? '40% 0 0 40%' : '0 40% 40% 0' }} />
     </div>
   )
 
-  return (
-    <div dir="rtl" style={{ 
-      backgroundColor: '#06142E', 
-      color: '#ffffff', height: '100vh', width: '100vw', 
-      overflow: 'hidden', display: 'flex', boxSizing: 'border-box', fontFamily: 'Heebo, sans-serif' 
-    }}>
-      
-      <FabricWave isRight={true} />
+  const renderPrayerSection = (title: string, list: any[]) => {
+    if (!list || list.length === 0) return null
+    return (
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ color: '#3A6EA5', fontSize: '1.6rem', borderBottom: '2px solid #C5A059', paddingBottom: '5px', marginBottom: '10px' }}>{title}</div>
+        {list.map((p: any, i: number) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', padding: '5px 0' }}>
+            <span>{p.name}:</span> <span>{p.time}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
+  return (
+    <div dir="rtl" style={{ backgroundColor: '#06142E', color: '#ffffff', height: '100vh', width: '100vw', overflow: 'hidden', display: 'flex', boxSizing: 'border-box', fontFamily: 'Heebo, sans-serif' }}>
+      <FabricWave isRight={true} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '10px 30px' }}>
         
-        {/* Simple Clean Header */}
         <header style={{ textAlign: 'right', paddingBottom: '5px' }}>
-          {shabbatData?.parasha && (
-            <div style={{ fontSize: '1.6rem', color: '#F9F8F3' }}>פרשת {shabbatData.parasha}</div>
-          )}
+          {shabbatData?.parasha && <div style={{ fontSize: '1.6rem', color: '#F9F8F3' }}>פרשת {shabbatData.parasha}</div>}
         </header>
 
-        {/* Center Glowing Clock */}
         <div style={{ textAlign: 'center', margin: '1vh 0 3vh 0' }}>
           <div style={{ fontSize: '10rem', fontWeight: 'bold', color: '#e6f1ff', textShadow: '0 0 25px #64ffda', fontVariantNumeric: 'tabular-nums', lineHeight: '1' }}>
             {time.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
-          <div style={{ fontSize: '2.5rem', color: '#C5A059', marginTop: '10px' }}>
-            יום {getHebrewDayName()}, {hebrewDate}
-          </div>
+          <div style={{ fontSize: '2.5rem', color: '#C5A059', marginTop: '10px' }}>יום {getHebrewDayName()}, {hebrewDate}</div>
         </div>
 
         <div style={{ display: 'flex', flex: 1, gap: '25px', overflow: 'hidden' }}>
           
-          <section style={{ flex: 1, backgroundColor: '#F9F8F3', borderRadius: '15px', border: '3px solid #C5A059', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
-            <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '15px', fontSize: '2.2rem', fontWeight: 'bold' }}>זמני תפילות</div>
-            <div style={{ padding: '20px', flex: 1, fontSize: '1.8rem', lineHeight: '2.4', color: '#0B2046', fontWeight: 'bold' }}>
-              {prayers?.shacharit && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px dotted #ccc' }}><span>שחרית:</span> <span>{prayers.shacharit}</span></div>}
-              {prayers?.mincha && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px dotted #ccc' }}><span>מנחה:</span> <span>{prayers.mincha}</span></div>}
-              {prayers?.maariv && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px dotted #ccc' }}><span>ערבית:</span> <span>{prayers.maariv}</span></div>}
-              
-              {(prayers?.shabbat_eve || prayers?.shabbat_shacharit) && (
-                <>
-                  <div style={{ marginTop: '20px', color: '#3A6EA5', fontSize: '1.6rem' }}>שבת קודש:</div>
-                  {prayers?.shabbat_eve && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px dotted #ccc' }}><span>מנחה/קבלת שבת:</span> <span>{prayers.shabbat_eve}</span></div>}
-                  {prayers?.shabbat_shacharit && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px dotted #ccc' }}><span>שחרית שבת:</span> <span>{prayers.shabbat_shacharit}</span></div>}
-                </>
-              )}
+          {/* Prayers Column */}
+          <section style={{ flex: 1, backgroundColor: '#F9F8F3', borderRadius: '15px', border: '3px solid #C5A059', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)', position: 'relative' }}>
+            <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '15px', fontSize: '2.2rem', fontWeight: 'bold', zIndex: 2 }}>זמני תפילות</div>
+            
+            {/* Holiday Background Watermark */}
+            {holidayIcon && (
+              <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '15rem', opacity: 0.1, zIndex: 1, pointerEvents: 'none' }}>
+                {holidayIcon}
+              </div>
+            )}
+
+            <div style={{ padding: '20px', flex: 1, fontSize: '1.6rem', lineHeight: '2', color: '#0B2046', fontWeight: 'bold', overflowY: 'auto', zIndex: 2 }}>
+              {renderPrayerSection("ימי חול", prayers.weekday)}
+              {renderPrayerSection("שבת קודש", prayers.shabbat)}
+              {renderPrayerSection("חגים ומועדים", prayers.chagim)}
             </div>
           </section>
 
+          {/* Zmanim Column */}
           <section style={{ flex: 1, backgroundColor: '#F9F8F3', borderRadius: '15px', border: '3px solid #C5A059', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
             <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '15px', fontSize: '2.2rem', fontWeight: 'bold' }}>זמני היום</div>
             <div style={{ padding: '20px', flex: 1, fontSize: '1.6rem', lineHeight: '2', color: '#0B2046', fontWeight: '500' }}>
@@ -165,16 +164,11 @@ export default function SynagogueBoard() {
             </div>
           </section>
 
+          {/* Community Column */}
           <section style={{ flex: 1, backgroundColor: '#F9F8F3', borderRadius: '15px', border: '3px solid #C5A059', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
             <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '15px', fontSize: '2.2rem', fontWeight: 'bold' }}>חיי הקהילה</div>
             <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
-              
-              {shabbatNote && (
-                <div style={{ marginBottom: '15px', padding: '15px', background: '#e3ecf5', borderRight: '4px solid #3A6EA5', borderRadius: '5px', color: '#0B2046', fontSize: '1.6rem', fontWeight: 'bold' }}>
-                  🍷 {shabbatNote}
-                </div>
-              )}
-
+              {shabbatNote && <div style={{ marginBottom: '15px', padding: '15px', background: '#e3ecf5', borderRight: '4px solid #3A6EA5', borderRadius: '5px', color: '#0B2046', fontSize: '1.6rem', fontWeight: 'bold' }}>🍷 {shabbatNote}</div>}
               {announcements.length > 0 && (
                 <div style={{ marginBottom: '15px', padding: '15px', background: '#fdf7e3', borderRight: '4px solid #C5A059', borderRadius: '5px' }}>
                   <strong style={{ color: '#8c7322', fontSize: '1.4rem' }}>הודעות קהילה:</strong>
@@ -183,7 +177,6 @@ export default function SynagogueBoard() {
                   </ul>
                 </div>
               )}
-
               {events.length > 0 ? (
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                   {events.map((evt: any, idx) => (
@@ -196,12 +189,9 @@ export default function SynagogueBoard() {
               ) : (<p style={{ color: '#777', fontSize: '1.4rem' }}>אין אירועים קרובים.</p>)}
             </div>
           </section>
-
         </div>
       </div>
-
       <FabricWave />
-
     </div>
   )
 }
