@@ -48,33 +48,28 @@ export default function SynagogueBoard() {
         const dataZmanim = await resZmanim.json()
         setZmanim(dataZmanim.times)
 
-        // The 'b=1' flag ensures it only fetches the UPCOMING Shabbat, exactly what we want for Sunday roll-over
-        const resShab = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=294200&m=50&b=1')
+        // Standard Hebcal call - Natively rolls over on Sunday
+        const resShab = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=294200&m=50')
         const dataShab = await resShab.json()
         
-        // Bulletproof extraction logic
         let parasha = ''
         let candles = ''
         let havdalah = ''
-        let holidayTitle = ''
 
         if (dataShab && dataShab.items) {
            const parashaItem = dataShab.items.find((i: any) => i.category === 'parashat' || (i.category === 'holiday' && i.subcat === 'shabbat'))
-           if (parashaItem) {
-               parasha = parashaItem.hebrew || parashaItem.title_orig || ''
-           }
+           if (parashaItem) parasha = parashaItem.hebrew || parashaItem.title || ''
+           
            const candleItem = dataShab.items.find((i: any) => i.category === 'candles')
            if (candleItem) candles = candleItem.date
            
            const havdalahItem = dataShab.items.find((i: any) => i.category === 'havdalah')
            if (havdalahItem) havdalah = havdalahItem.date
-
-           const holidayItem = dataShab.items.find((i: any) => i.category === 'holiday')
-           if(holidayItem) holidayTitle = holidayItem.title_orig || ''
         }
 
         setShabbatData({ parasha, candles, havdalah })
 
+        const holidayTitle = dataShab.items.find((i: any) => i.category === 'holiday')?.title_orig || ''
         if (holidayTitle.includes('Rosh Hashana')) setHolidayIcon('🍎🍯')
         else if (holidayTitle.includes('Yom Kippur')) setHolidayIcon('🤍🕍')
         else if (holidayTitle.includes('Sukkot')) setHolidayIcon('🍋🌿')
@@ -128,6 +123,11 @@ export default function SynagogueBoard() {
     )
   }
 
+  // Format Parasha smartly
+  const displayParasha = shabbatData?.parasha 
+    ? (shabbatData.parasha.includes('פרשת') || shabbatData.parasha.includes('שבת') ? shabbatData.parasha : `פרשת ${shabbatData.parasha}`) 
+    : '';
+
   return (
     <div dir="rtl" style={{ backgroundColor: '#06142E', color: '#ffffff', height: '100vh', width: '100vw', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', fontFamily: 'Heebo, sans-serif' }}>
       
@@ -143,17 +143,18 @@ export default function SynagogueBoard() {
         
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '15px 30px' }}>
           
-          {/* HEADER WITH SHABBAT INFO */}
+          {/* THREE PART SYMMETRICAL HEADER */}
           <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '15px', borderBottom: '2px solid #1a335c', marginBottom: '15px' }}>
-            <div style={{ fontSize: '1.6rem', color: '#C5A059', fontWeight: 'bold' }}>
-              {shabbatData?.candles && <span>🕯️ הדלקת נרות: {formatTime(shabbatData.candles)} &nbsp;|&nbsp; </span>}
+            <div style={{ flex: 1, textAlign: 'right', fontSize: '1.6rem', color: '#C5A059', fontWeight: 'bold' }}>
+              {shabbatData?.candles && <span>🕯️ הדלקת נרות: {formatTime(shabbatData.candles)}</span>}
+              {shabbatData?.candles && shabbatData?.havdalah && <span> &nbsp;|&nbsp; </span>}
               {shabbatData?.havdalah && <span>🍷 צאת שבת: {formatTime(shabbatData.havdalah)}</span>}
             </div>
-            <div style={{ fontSize: '3rem', color: '#C5A059', fontWeight: 'bold', textShadow: '0 0 15px rgba(197, 160, 89, 0.4)' }}>
+            <div style={{ flex: 1, textAlign: 'center', fontSize: '3.2rem', color: '#C5A059', fontWeight: 'bold', textShadow: '0 0 15px rgba(197, 160, 89, 0.4)' }}>
               קהילת עורי צפון
             </div>
-            <div style={{ fontSize: '1.6rem', color: '#F9F8F3', fontWeight: 'bold' }}>
-              {shabbatData?.parasha && <span>פרשת {shabbatData.parasha}</span>}
+            <div style={{ flex: 1, textAlign: 'left', fontSize: '1.6rem', color: '#F9F8F3', fontWeight: 'bold' }}>
+              {displayParasha && <span>{displayParasha}</span>}
             </div>
           </header>
 
@@ -166,6 +167,7 @@ export default function SynagogueBoard() {
 
           <div style={{ display: 'flex', flex: 1, gap: '25px', overflow: 'hidden', paddingBottom: '15px' }}>
             
+            {/* Prayers Column */}
             <section style={{ flex: 1, backgroundColor: '#F9F8F3', borderRadius: '15px', border: '3px solid #C5A059', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)', position: 'relative' }}>
               <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '12px', fontSize: '2rem', fontWeight: 'bold', zIndex: 2 }}>זמני תפילות</div>
               {holidayIcon && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '15rem', opacity: 0.1, zIndex: 1, pointerEvents: 'none' }}>{holidayIcon}</div>}
@@ -177,6 +179,7 @@ export default function SynagogueBoard() {
               </div>
             </section>
 
+            {/* Zmanim Column */}
             <section style={{ flex: 1, backgroundColor: '#F9F8F3', borderRadius: '15px', border: '3px solid #C5A059', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
               <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '12px', fontSize: '2rem', fontWeight: 'bold' }}>זמני היום</div>
               <div style={{ padding: '15px 0', flex: 1, fontSize: '1.5rem', lineHeight: '1.9', color: '#0B2046', fontWeight: '500', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -195,6 +198,7 @@ export default function SynagogueBoard() {
               </div>
             </section>
 
+            {/* Community Column */}
             <section style={{ flex: 1, backgroundColor: '#F9F8F3', borderRadius: '15px', border: '3px solid #C5A059', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
               <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '12px', fontSize: '2rem', fontWeight: 'bold' }}>חיי הקהילה</div>
               <div style={{ padding: '15px 20px', flex: 1, overflow: 'hidden' }}>
