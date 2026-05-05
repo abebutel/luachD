@@ -13,7 +13,13 @@ const SYNAGOGUE_ID = 'c35cdd4c-7f74-4254-b012-16f4677fefa7'
 
 const formatTime = (dateString: string) => {
   if (!dateString) return '--:--'
-  return new Date(dateString).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false })
+  // Safely handle both ISO strings and raw "HH:MM" fallback strings
+  if (dateString.length <= 5 && dateString.includes(':')) return dateString
+  try {
+    return new Date(dateString).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false })
+  } catch (e) {
+    return '--:--'
+  }
 }
 
 const getHebrewDayName = () => ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"][new Date().getDay()]
@@ -48,8 +54,8 @@ export default function SynagogueBoard() {
         const dataZmanim = await resZmanim.json()
         setZmanim(dataZmanim.times)
 
-        // Standard Hebcal call - Natively rolls over on Sunday
-        const resShab = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=294200&m=50')
+        // FIXED: Using exact geo-coordinates + 'i=on' for Israeli Sedra schedule
+        const resShab = await fetch('https://www.hebcal.com/shabbat?cfg=json&geo=pos&latitude=31.8927&longitude=35.0110&tzid=Asia/Jerusalem&m=50&i=on')
         const dataShab = await resShab.json()
         
         let parasha = ''
@@ -57,19 +63,22 @@ export default function SynagogueBoard() {
         let havdalah = ''
 
         if (dataShab && dataShab.items) {
-           const parashaItem = dataShab.items.find((i: any) => i.category === 'parashat' || (i.category === 'holiday' && i.subcat === 'shabbat'))
-           if (parashaItem) parasha = parashaItem.hebrew || parashaItem.title || ''
+           // Broadened extraction to catch all possible Parasha formats
+           const parashaItem = dataShab.items.find((i: any) => i.category === 'parashat' || i.category === 'leyning' || (i.category === 'holiday' && i.subcat === 'shabbat'))
+           if (parashaItem) {
+               parasha = parashaItem.hebrew || parashaItem.title || ''
+           }
            
            const candleItem = dataShab.items.find((i: any) => i.category === 'candles')
-           if (candleItem) candles = candleItem.date
+           if (candleItem) candles = candleItem.date || candleItem.title?.match(/\d{1,2}:\d{2}/)?.[0] || ''
            
            const havdalahItem = dataShab.items.find((i: any) => i.category === 'havdalah')
-           if (havdalahItem) havdalah = havdalahItem.date
+           if (havdalahItem) havdalah = havdalahItem.date || havdalahItem.title?.match(/\d{1,2}:\d{2}/)?.[0] || ''
         }
 
         setShabbatData({ parasha, candles, havdalah })
 
-        const holidayTitle = dataShab.items.find((i: any) => i.category === 'holiday')?.title_orig || ''
+        const holidayTitle = dataShab.items?.find((i: any) => i.category === 'holiday')?.title_orig || ''
         if (holidayTitle.includes('Rosh Hashana')) setHolidayIcon('🍎🍯')
         else if (holidayTitle.includes('Yom Kippur')) setHolidayIcon('🤍🕍')
         else if (holidayTitle.includes('Sukkot')) setHolidayIcon('🍋🌿')
@@ -110,11 +119,11 @@ export default function SynagogueBoard() {
   const renderPrayerSection = (title: string, list: any[]) => {
     if (!list || list.length === 0) return null
     return (
-      <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+      <div style={{ marginBottom: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
         <div style={{ color: '#3A6EA5', fontSize: '1.4rem', borderBottom: '2px solid #C5A059', paddingBottom: '2px', marginBottom: '5px', textAlign: 'center', width: '80%', fontWeight: 'bold' }}>{title}</div>
         <div style={{ width: '90%', maxWidth: '350px' }}>
           {list.map((p: any, i: number) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', padding: '3px 0', fontSize: '1.4rem' }}>
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', padding: '2px 0', fontSize: '1.3rem' }}>
               <span>{p.name}:</span> <strong>{p.time}</strong>
             </div>
           ))}
@@ -123,7 +132,6 @@ export default function SynagogueBoard() {
     )
   }
 
-  // Format Parasha smartly
   const displayParasha = shabbatData?.parasha 
     ? (shabbatData.parasha.includes('פרשת') || shabbatData.parasha.includes('שבת') ? shabbatData.parasha : `פרשת ${shabbatData.parasha}`) 
     : '';
@@ -143,15 +151,15 @@ export default function SynagogueBoard() {
         
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '15px 30px' }}>
           
-          {/* THREE PART SYMMETRICAL HEADER */}
-          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '15px', borderBottom: '2px solid #1a335c', marginBottom: '15px' }}>
-            <div style={{ flex: 1, textAlign: 'right', fontSize: '1.6rem', color: '#C5A059', fontWeight: 'bold' }}>
+          {/* THE HEADER WITH KEHILLA TITLE */}
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '10px', borderBottom: '2px solid #1a335c', marginBottom: '10px' }}>
+            <div style={{ flex: 1, textAlign: 'right', fontSize: '1.5rem', color: '#C5A059', fontWeight: 'bold' }}>
               {shabbatData?.candles && <span>🕯️ הדלקת נרות: {formatTime(shabbatData.candles)}</span>}
               {shabbatData?.candles && shabbatData?.havdalah && <span> &nbsp;|&nbsp; </span>}
               {shabbatData?.havdalah && <span>🍷 צאת שבת: {formatTime(shabbatData.havdalah)}</span>}
             </div>
             <div style={{ flex: 1, textAlign: 'center', fontSize: '3.2rem', color: '#C5A059', fontWeight: 'bold', textShadow: '0 0 15px rgba(197, 160, 89, 0.4)' }}>
-              קהילת עורי צפון
+              ברוכים הבאים לקהילת עורי צפון
             </div>
             <div style={{ flex: 1, textAlign: 'left', fontSize: '1.6rem', color: '#F9F8F3', fontWeight: 'bold' }}>
               {displayParasha && <span>{displayParasha}</span>}
@@ -172,7 +180,7 @@ export default function SynagogueBoard() {
               <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '12px', fontSize: '2rem', fontWeight: 'bold', zIndex: 2 }}>זמני תפילות</div>
               {holidayIcon && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '15rem', opacity: 0.1, zIndex: 1, pointerEvents: 'none' }}>{holidayIcon}</div>}
               
-              <div style={{ padding: '15px 0', flex: 1, color: '#0B2046', overflow: 'hidden', zIndex: 2 }}>
+              <div style={{ padding: '10px 0', flex: 1, color: '#0B2046', overflow: 'hidden', zIndex: 2 }}>
                 {renderPrayerSection("ימי חול", prayers.weekday)}
                 {renderPrayerSection("שבת קודש", prayers.shabbat)}
                 {renderPrayerSection("חגים ומועדים", prayers.chagim)}
@@ -182,7 +190,7 @@ export default function SynagogueBoard() {
             {/* Zmanim Column */}
             <section style={{ flex: 1, backgroundColor: '#F9F8F3', borderRadius: '15px', border: '3px solid #C5A059', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
               <div style={{ backgroundColor: '#0B2046', color: '#F9F8F3', textAlign: 'center', padding: '12px', fontSize: '2rem', fontWeight: 'bold' }}>זמני היום</div>
-              <div style={{ padding: '15px 0', flex: 1, fontSize: '1.5rem', lineHeight: '1.9', color: '#0B2046', fontWeight: '500', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ padding: '10px 0', flex: 1, fontSize: '1.4rem', lineHeight: '1.8', color: '#0B2046', fontWeight: '500', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ width: '90%', maxWidth: '350px' }}>
                   {settings?.alotHaShachar && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>עלות השחר:</span> <strong>{formatTime(zmanim.alotHaShachar)}</strong></div>}
                   {settings?.sunrise && <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted #ccc', paddingBottom: '3px', marginBottom: '3px' }}><span>נץ החמה:</span> <strong>{formatTime(zmanim.sunrise)}</strong></div>}
